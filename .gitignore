@@ -8,6 +8,8 @@
 /plots
 /notebooks
 /_research
+# Ignore inner git files
+src/QuantumDots/.git
 
 ################################################################################
 #                                    Julia                                     #

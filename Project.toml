@@ -1,7 +1,10 @@
 name = "majoranaQDchain"
 authors = ["William Samuelson"]
-[compat]
-julia = "1.8.3"
-DrWatson = "2.12.1"
+
 [deps]
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
+QuantumDots = "312194fd-fec5-4b07-ba1c-a40d7013a56a"
+
+[compat]
+DrWatson = "2.12.1"
+julia = "1.8.3"
