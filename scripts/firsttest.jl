@@ -6,29 +6,24 @@ using LinearAlgebra
 using Plots
 
 function hamiltonian(particle_ops, Δ, t0, ϵ, ϕ, U, Ez)
-    # how can I store the hamiltonian terms as a generator?
     d = particle_ops
     N = QuantumDots.nbr_of_fermions(d) ÷ 2
     t_normal = [t0[j]*cos(ϕ[j]/2) for j in 1:N-1]
     t_flip = [t0[j]*sin(ϕ[j]/2) for j in 1:N-1]
-    ham_dot_sp = sum(ϵ[j]*d[j,σ]'d[j,σ] for j in 1:N, σ in (:↑, :↓))
-    ham_dot_int = sum(U*d[j,:↑]'d[j,:↑]*d[j,:↓]'d[j,:↓] for j in 1:N)
-    ham_tun_normal  = sum(t_normal[j]*d[j+1, σ]'d[j, σ] for j in 1:N-1, σ in (:↑, :↓))
-    ham_tun_flip = sum(t_flip[j]*d[j+1, σ]'d[j, flip(σ)] for j in 1:N-1, σ in (:↑, :↓))
-    ham_sc = sum(Δ[j]*d[j, :↑]'d[j, :↓]' for j in 1:N)
-    ham = ham_tun_normal + ham_tun_flip + ham_sc
+    ham_dot_sp = (ϵ[j]*d[j,σ]'d[j,σ] for j in 1:N, σ in (:↑, :↓))
+    ham_dot_int = (U*d[j,:↑]'d[j,:↑]*d[j,:↓]'d[j,:↓] for j in 1:N)
+    ham_tun_normal = (t_normal[j]*d[j+1, σ]'d[j, σ] for j in 1:N-1, σ in (:↑, :↓))
+    ham_tun_flip = (t_flip[j]*d[j+1, σ]'d[j, ρ] for j in 1:N-1, σ in (:↑, :↓), ρ in (:↑, :↓) if σ != ρ)
+    ham_sc = (Δ[j]*d[j, :↑]'d[j, :↓]' for j in 1:N)
+    ham = sum(ham_tun_normal) + sum(ham_tun_flip) + sum(ham_sc)
     # add conjugates
     ham += ham'
-    ham += ham_dot_sp + ham_dot_int 
+    ham += sum(ham_dot_sp) + sum(ham_dot_int)
     return ham
 end
 
 function eta(spin)
     return spin == :↑ ? -1 : 1
-end
-
-function flip(spin)
-    return spin == :↑ ? :↓ : :↑
 end
 
 function groundindices(basis, vecs, energies)
@@ -45,7 +40,7 @@ function majoranapolarization(majoranas, oddstate, evenstate)
 end
 
 function plot_gapandmp()
-    N = 2
+    N = 3
     d = FermionBasis(1:N, (:↑, :↓))
     t0 = fill(4, N)
     Δ = 2*t0
@@ -66,7 +61,7 @@ function plot_gapandmp()
         ham = hamiltonian(d, Δ, t0, ϵ, ϕ, U, Ez)
         energies, vecs = eigen!(Matrix(ham))
         even, odd = groundindices(d, eachcol(vecs), energies)
-        gaps[i] = abs(energies[even] - energies[odd])
+        gaps[i] = energies[even] - energies[odd]
         # mps[i] = majoranapolarization(majoranas, vecs[:,odd], vecs[:,even])
     end
     # display(plot(eps_vec, [gaps, mps], label=["Gap" "MP"]))
