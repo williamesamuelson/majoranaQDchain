@@ -4,7 +4,7 @@
 
 \begin{document}
 \section{19 January 2023}
-Working on understanding Majorana polarization. So we want to find two Majoranas $\gamma^+$ and $\gamma^-$ (left/right Majorana) and form a non-local fermion
+Working on understanding Majorana polarization. So we want to find two Hermitian Majoranas $\gamma^+$ and $\gamma^-$ (left/right Majorana) and form a non-local fermion
 \begin{equation}
    f = \frac{1}{2}(\gamma^+ + i\gamma^-), 
 \end{equation}
@@ -22,7 +22,7 @@ We then calculate e.g.,
                                 &= a_j^+ + \sum_{(k, s)\neq(j,+)} a_k^s \braket{o|\gamma_j^+\gamma_k^s|o}
     \end{split}
 \end{equation}
-but $\braket{o|\gamma_j^+\gamma_k^s|o}^*=\braket{o|\gamma_k^s\gamma_j^+|o} = -(2)\braket{o|\gamma_j^+\gamma_k^s|o}$ (by using anti-commutation). Hence the second term is purely imaginary (however, the anti-commutation has a factor 2?) and we can write (analogously for the other coefficients)
+but $\braket{o|\gamma_j^+\gamma_k^s|o}^*=\braket{o|\gamma_k^s\gamma_j^+|o} = -\braket{o|\gamma_j^+\gamma_k^s|o}$ (by using anti-commutation). Hence the second term is purely imaginary and we can write (analogously for the other coefficients)
 \begin{equation}
     \begin{split}
         a_j^+ &= \operatorname{Re}\{\braket{o|\gamma_j^+|e}\} \\
@@ -33,8 +33,24 @@ but $\braket{o|\gamma_j^+\gamma_k^s|o}^*=\braket{o|\gamma_k^s\gamma_j^+|o} = -(2
 \end{equation}
 since the $a,b$ coefficients are real ($\gamma^+$ and $\gamma^-$ are Hermitian). If the Hamiltonian is real (?), $a_j^- = b_j^+ = 0$ and we can skip taking the real part.
 
+\begin{enumerate}
+    \item What have we assumed when doing this? Have we assumed that we have good left/right majoranas and then derived their expansion?
+\end{enumerate}
 
+\section{20 January 2023}
+The Majorana polarization is defined in e.g., Aksenov 2020 as roughly (though not taking into account taking the real part as above)
 
+\begin{equation}
+    \text{MP} = \frac{\sum_j^{'} {a_j^+}^2 - {b_j^-}^2}{\sum_j^{'} {a_j^+}^2 + {b_j^-}^2}
+\end{equation}
+where the prime means to sum over half of the chain. This seems to depend on how much of $\gamma^-$ has leaked into the left side. 
 
-
+\begin{enumerate}
+    \item What is the meaning of the MP\@? Relation to original paper?
+    \item Is it reasonably defined? What if we have an imaginary part? Spin?
+    \item What if one Majoranas leaks to the opposite half but the other does not?
+    \item Could you do a normal scalar product to calculate overlap?
+    \item If no overlap, the denominator is not necessary since the sum of the coefficients squared is unity (see below).
+\end{enumerate}
+Proved that $\sum_k {a_k^+}^2 = 1$ by induction, anti-commutation relations and that the majoranas square to one, assuming that we only get the + coefficients. Also tried out the MP on the Poor mans geometry.
 \end{document}
