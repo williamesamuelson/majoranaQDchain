@@ -10,7 +10,8 @@ function hamiltonian(particle_ops, Δ, t0, ϵ, ϕ, U, Ez)
     N = QuantumDots.nbr_of_fermions(d) ÷ 2
     t_normal = [t0[j]*cos(ϕ[j]/2) for j in 1:N-1]
     t_flip = [t0[j]*sin(ϕ[j]/2) for j in 1:N-1]
-    ham_dot_sp = (ϵ[j]*d[j,σ]'d[j,σ] for j in 1:N, σ in (:↑, :↓))
+
+    ham_dot_sp = ((ϵ[j] + eta(σ)*Ez/2)*d[j,σ]'d[j,σ] for j in 1:N, σ in (:↑, :↓))
     ham_dot_int = (U*d[j,:↑]'d[j,:↑]*d[j,:↓]'d[j,:↓] for j in 1:N)
     ham_tun_normal = (t_normal[j]*d[j+1, σ]'d[j, σ] for j in 1:N-1, σ in (:↑, :↓))
     ham_tun_flip = (t_flip[j]*d[j+1, σ]'d[j, ρ] for j in 1:N-1, σ in (:↑, :↓), ρ in (:↑, :↓) if σ != ρ)
@@ -40,14 +41,14 @@ function majoranapolarization(majoranas, oddstate, evenstate)
 end
 
 function plot_gapandmp()
-    N = 3
+    N = 2
     d = FermionBasis(1:N, (:↑, :↓))
-    t0 = fill(4, N)
-    Δ = 2*t0
+    t0 = fill(1, N)
+    Δ = 4*t0
     ϵ = zeros(N)
     ϕ = fill(π/2, N)
-    U = 10*t0[1]
-    Ez = t0[1]
+    U = 20*t0[1]
+    Ez = 4*t0[1]
 
     points = 100
     eps_vec = range(-2Δ[1], 2Δ[1], points)

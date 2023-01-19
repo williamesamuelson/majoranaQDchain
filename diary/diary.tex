@@ -1,0 +1,40 @@
+\documentclass{article}
+\usepackage{braket}
+\usepackage{amsmath}
+
+\begin{document}
+\section{19 January 2023}
+Working on understanding Majorana polarization. So we want to find two Majoranas $\gamma^+$ and $\gamma^-$ (left/right Majorana) and form a non-local fermion
+\begin{equation}
+   f = \frac{1}{2}(\gamma^+ + i\gamma^-), 
+\end{equation}
+such that $f^\dag\ket{o} = \ket{e}$. Then we get $\ket{e} = \gamma^+\ket{o}$ and $\ket{e} = -i\gamma^-\ket{o}$. We can expand these Majoranas in the Hermitian site-Majoranas $\gamma_j^+ = d^\dag_j + d_j$ and $\gamma^-_j = i(d^\dag_j - d_j)$
+\begin{equation}
+\begin{split}
+    \gamma^+ &= \sum_{j,s} a_j^s \gamma_j^s \\
+    \gamma^- &= \sum_{j,s} b_j^s \gamma_j^s. 
+\end{split}
+\end{equation}
+We then calculate e.g.,
+\begin{equation}
+    \begin{split}
+        \braket{o|\gamma_j^+|e} &= \braket{o|\gamma_j^+ \gamma^+|o} = \braket{o|\gamma_j^+ \sum_{k,s} a_k^s \gamma_k^s|o} = \braket{o|a_j^+ + \sum_{(k, s)\neq(j,+)}a_k^s\gamma_j^+\gamma_k^s|o} \\
+                                &= a_j^+ + \sum_{(k, s)\neq(j,+)} a_k^s \braket{o|\gamma_j^+\gamma_k^s|o}
+    \end{split}
+\end{equation}
+but $\braket{o|\gamma_j^+\gamma_k^s|o}^*=\braket{o|\gamma_k^s\gamma_j^+|o} = -(2)\braket{o|\gamma_j^+\gamma_k^s|o}$ (by using anti-commutation). Hence the second term is purely imaginary (however, the anti-commutation has a factor 2?) and we can write (analogously for the other coefficients)
+\begin{equation}
+    \begin{split}
+        a_j^+ &= \operatorname{Re}\{\braket{o|\gamma_j^+|e}\} \\
+        a_j^- &= -\operatorname{Im}\{\braket{o|\gamma_j^-|e}\} \\
+        b_j^+ &= -\operatorname{Im}\{\braket{o|\gamma_j^+|e}\} \\
+        b_j^- &= \operatorname{Re}\{\braket{o|\gamma_j^-|e}\} \\
+    \end{split}
+\end{equation}
+since the $a,b$ coefficients are real ($\gamma^+$ and $\gamma^-$ are Hermitian). If the Hamiltonian is real (?), $a_j^- = b_j^+ = 0$ and we can skip taking the real part.
+
+
+
+
+
+\end{document}
