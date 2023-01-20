@@ -3,7 +3,7 @@
 \usepackage{amsmath}
 
 \begin{document}
-\section{19 January 2023}
+\section{January 19th 2023}
 Working on understanding Majorana polarization. So we want to find two Hermitian Majoranas $\gamma^+$ and $\gamma^-$ (left/right Majorana) and form a non-local fermion
 \begin{equation}
    f = \frac{1}{2}(\gamma^+ + i\gamma^-), 
@@ -26,9 +26,9 @@ but $\braket{o|\gamma_j^+\gamma_k^s|o}^*=\braket{o|\gamma_k^s\gamma_j^+|o} = -\b
 \begin{equation}
     \begin{split}
         a_j^+ &= \operatorname{Re}\{\braket{o|\gamma_j^+|e}\} \\
-        a_j^- &= -\operatorname{Im}\{\braket{o|\gamma_j^-|e}\} \\
+        a_j^- &= \operatorname{Re}\{\braket{o|\gamma_j^-|e}\} \\
         b_j^+ &= -\operatorname{Im}\{\braket{o|\gamma_j^+|e}\} \\
-        b_j^- &= \operatorname{Re}\{\braket{o|\gamma_j^-|e}\} \\
+        b_j^- &= -\operatorname{Im}\{\braket{o|\gamma_j^-|e}\} \\
     \end{split}
 \end{equation}
 since the $a,b$ coefficients are real ($\gamma^+$ and $\gamma^-$ are Hermitian). If the Hamiltonian is real (?), $a_j^- = b_j^+ = 0$ and we can skip taking the real part.
@@ -37,7 +37,7 @@ since the $a,b$ coefficients are real ($\gamma^+$ and $\gamma^-$ are Hermitian).
     \item What have we assumed when doing this? Have we assumed that we have good left/right majoranas and then derived their expansion?
 \end{enumerate}
 
-\section{20 January 2023}
+\section{January 20th 2023}
 The Majorana polarization is defined in e.g., Aksenov 2020 as roughly (though not taking into account taking the real part as above)
 
 \begin{equation}
@@ -53,4 +53,11 @@ where the prime means to sum over half of the chain. This seems to depend on how
     \item If no overlap, the denominator is not necessary since the sum of the coefficients squared is unity (see below).
 \end{enumerate}
 Proved that $\sum_k {a_k^+}^2 = 1$ by induction, anti-commutation relations and that the majoranas square to one, assuming that we only get the + coefficients. Also tried out the MP on the Poor mans geometry.
+\section{January 23rd, 2023}
+\begin{enumerate}
+    \item Confused about Fourier transform of second quantization operators. Turns out it can be seen as a basis change between position and momentum space bases. See p. 16 to 18 in Flensberg Many body.
+    \item Started trying to derive bulk energies of Kitaev chain with periodic boundary condition (Alicea).
+    \item Discussed MP with Viktor, seems like the normalization is not good. One special case with overlap only on right side, still unity MP\@. To include spin one can subtract the spin part, such that it measures how lonely one of the spin species is. 
+    \item Then I started looking through the derivation in Akhmerov to try and understand how the Kitaev chain emerges from local coupling.
+\end{enumerate}
 \end{document}
