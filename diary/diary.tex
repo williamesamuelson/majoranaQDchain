@@ -3,7 +3,7 @@
 \usepackage{amsmath}
 
 \begin{document}
-\section{January 19th 2023}
+\section*{January 19th 2023}
 Working on understanding Majorana polarization. So we want to find two Hermitian Majoranas $\gamma^+$ and $\gamma^-$ (left/right Majorana) and form a non-local fermion
 \begin{equation}
    f = \frac{1}{2}(\gamma^+ + i\gamma^-), 
@@ -37,7 +37,7 @@ since the $a,b$ coefficients are real ($\gamma^+$ and $\gamma^-$ are Hermitian).
     \item What have we assumed when doing this? Have we assumed that we have good left/right majoranas and then derived their expansion?
 \end{enumerate}
 
-\section{January 20th 2023}
+\section*{January 20th 2023}
 The Majorana polarization is defined in e.g., Aksenov 2020 as roughly (though not taking into account taking the real part as above)
 
 \begin{equation}
@@ -53,7 +53,7 @@ where the prime means to sum over half of the chain. This seems to depend on how
     \item If no overlap, the denominator is not necessary since the sum of the coefficients squared is unity (see below).
 \end{enumerate}
 Proved that $\sum_k {a_k^+}^2 = 1$ by induction, anti-commutation relations and that the majoranas square to one, assuming that we only get the + coefficients. Also tried out the MP on the Poor mans geometry.
-\section{January 23rd, 2023}
+\section*{January 23rd, 2023}
 \begin{enumerate}
     \item Confused about Fourier transform of second quantization operators. Turns out it can be seen as a basis change between position and momentum space bases. See p. 16 to 18 in Flensberg Many body.
     \item Started trying to derive bulk energies of Kitaev chain with periodic boundary condition (Alicea).
@@ -61,11 +61,28 @@ Proved that $\sum_k {a_k^+}^2 = 1$ by induction, anti-commutation relations and 
     \item Then I started looking through the derivation in Akhmerov to try and understand how the Kitaev chain emerges from local coupling.
 \end{enumerate}
 
-\section{January 24th, 2023}
+\section*{January 24th, 2023}
 Working on the derivation in Akhmerov, struggling with Maple. Might have a problem with one of my rules, giving the wrong sign in the new operators.
-\section{Januray 25th, 2023}
+\section*{Januray 25th, 2023}
 Found problem with sign, just took other branch of $\Delta$. Struggling with getting the correct phases of the $a$ and $b$ operators in Maple, but I think I got it. Expressed the old $c$ operators in the new $a$ and $b$. Inserted it in Hamiltonian. The dot hamiltonian of course reduces to only $a^\dag a$ and $b^\dag b$ so only spin-orbit/rotation left. Found out what $e^{i\boldsymbol{\lambda}\boldsymbol{\sigma}}$ actually means, it is the matrix representation of the rotation operator $D(n,2\lambda)$ which rotates the spin $2\lambda$ around the $n$ axis. Also, very convenient to use Pauli matrix exponent formula. Very messy algebra however, try to get to Akhmerov. Don't understand how to/the reason why you can project onto the $a$ operators.
 
-\section{Janurary 25th}
+\section*{Janurary 26th}
 Looked at job openings before lunch. After lunch I managed to get to the expression for the tunneling in Akhmerov. Still confused about how you can remove all $b$ operators and what the conditions of doing it are. Thinking about the conditions on the parameters to get to the topological phase.
+
+\section*{January 27th}
+Rewrote the derivation of Akhmerov more neatly. Discussed with Viktor:
+\begin{itemize}
+    \item We can neglect the $b$ operators at $V\gg w$ since the $b$-states are far off in energy and do not affect the ground state (which is what we are interested in). Perhaps one can think about it in terms of line width?
+    \item The limit $V \gg w$ also implies $\Delta_{ind}\propto \Gamma_{SC}, \mu_n \gg w$. So in essence we need large Zeeman splitting, SC-dot coupling and chemical potential to obtain Kitaev chain with local SC-coupling.
+    \item Also interesting that the particles in the emerging Kitaev chain are these $a$ operators (Bogoliubov-like), not electrons.
+    \item Next up is to
+        \begin{enumerate}
+            \item Write up the Akhmerov Hamiltonian with constant SC-phase, spin-orbit rotation and spin-orbit direction, and maybe do a gauge transformation to only get one phase.
+            \item Implement the model as well as the Kitaev chain in code.
+            \item Implement a MP function for each model.
+            \item Compare MP and energy gap in Kitaev and local coupling model.
+        \end{enumerate}
+    \item I don't understand how to do the scanning of MP and gap. I need to scan $\lambda$ probably such that it takes linear steps in $\Delta$?
+    \item For the MP I now need to sum over three indices.
+\end{itemize}
 \end{document}
