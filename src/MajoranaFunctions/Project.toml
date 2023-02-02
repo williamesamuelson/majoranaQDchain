@@ -1,0 +1,7 @@
+name = "MajoranaFunctions"
+uuid = "bb27fe77-b015-4b10-a214-8ec769d9e422"
+authors = ["williamesamuelson <william.samuelson@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+QuantumDots = "312194fd-fec5-4b07-ba1c-a40d7013a56a"

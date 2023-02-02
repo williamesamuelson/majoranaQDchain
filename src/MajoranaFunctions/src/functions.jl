@@ -1,4 +1,4 @@
-function hamiltonian(particle_ops, μ::Vector, Δ::Vector, w::Vector, λ::Vector, Φ::Vector, U, Vz)
+function hamiltonian(particle_ops, μ, Δ, w, λ, Φ, U, Vz)
     d = particle_ops
     N = QuantumDots.nbr_of_fermions(d) ÷ 2
     ham_dot_sp = ((μ[j] - eta(σ)*Vz)*d[j,σ]'d[j,σ] for j in 1:N, σ in (:↑, :↓))
@@ -13,18 +13,22 @@ function hamiltonian(particle_ops, μ::Vector, Δ::Vector, w::Vector, λ::Vector
     return ham
 end
 
-function hamiltonian(particle_ops, μ, Δ, w, λ, Φ, U, Vz)
-    # is this slow?
-    d = particle_ops
-    N = QuantumDots.nbr_of_fermions(d) ÷ 2
-    vec_params = [μ, Δ, w, λ, Φ]
-    for param in vec_params
-        if param isa Number
-            param = fill(param, N)
-        end
-    end
-    return hamiltonian(d, μ, Δ, w, λ, Φ, U, Vz)
-end
+# function hamiltonian(particle_ops, μ, Δ, w, λ, Φ, U, Vz)
+#     # is this slow?
+#     d = particle_ops
+#     N = QuantumDots.nbr_of_fermions(d) ÷ 2
+#     vec_params = [μ, Δ, w, λ, Φ]
+#     newparams = zeros(N, length(vec_params))
+#     for i in 1:length(vec_params)
+#         param = vec_params[i]
+#         if param isa Number
+#             newparams[:, i] = fill(param, N)
+#         else
+#             newparams[:, i] = vec_params[i]
+#         end
+#     end
+#     return hamiltonian(d, eachcol(newparams)..., U, Vz)
+# end
 
 function eta(spin)
     return spin==:↑ ? -1 : 1
@@ -50,7 +54,15 @@ function groundindices(particle_ops, vecs, energies)
     return evenindices[1]::Int, oddindices[1]::Int
 end
 
-function majoranapolarization(particle_ops, oddstate, evenstate)
+function mpspinful(particle_ops, oddstate, evenstate)
+    d = particle_ops
+    N = QuantumDots.nbr_of_fermions(d)
+    acoeffs = real.([oddstate'*(d[j, σ]' + d[j, σ])*evenstate for j in 1:N÷2, σ in (:↑, :↓)])
+    bcoeffs = -1*imag.([oddstate'*1im*(d[j, σ]' - d[j, σ])*evenstate for j in 1:N÷2, σ in (:↑, :↓)])
+    return sum(acoeffs.^2 .- bcoeffs.^2)
+end
+
+function mpkitaev(particle_ops, oddstate, evenstate)
     d = particle_ops
     N = QuantumDots.nbr_of_fermions(d)
     acoeffs = real.([oddstate'*(d[j]' + d[j])*evenstate for j in 1:N÷2])
