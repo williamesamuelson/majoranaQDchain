@@ -1,3 +1,25 @@
+function hamiltonian(particle_ops, params)
+    d = particle_ops
+    N = QuantumDots.nbr_of_fermions(d) ÷ 2
+    p = params
+    μ = p["μ"]
+    Δ = p["Δ"]
+    w = p["w"]
+    λ = p["λ"]
+    Φ = p["Φ"]
+    U = p["U"]
+    Vz = p["Vz"]
+    ham_dot_sp = ((μ[j] - eta(σ)*Vz)*d[j,σ]'d[j,σ] for j in 1:N, σ in (:↑, :↓))
+    ham_dot_int = (U*d[j,:↑]'d[j,:↑]*d[j,:↓]'d[j,:↓] for j in 1:N)
+    ham_tun_normal = (w[j]*cos(λ[j])*d[j, σ]'d[j+1, σ] for j in 1:N-1, σ in (:↑, :↓))
+    ham_tun_flip = (w[j]*sin(λ[j])*(d[j, :↑]'d[j+1, :↓] - d[j, :↓]'d[j+1, :↑]) for j in 1:N-1) 
+    ham_sc = (Δ[j]*exp(1im*Φ[j])*d[j, :↑]'d[j, :↓]' for j in 1:N)
+    ham = sum(ham_tun_normal) + sum(ham_tun_flip) + sum(ham_sc)
+    # add conjugates
+    ham += ham'
+    ham += sum(ham_dot_sp) + sum(ham_dot_int)
+    return ham
+end
 function hamiltonian(particle_ops, μ, Δ, w, λ, Φ, U, Vz)
     d = particle_ops
     N = QuantumDots.nbr_of_fermions(d) ÷ 2
@@ -12,6 +34,21 @@ function hamiltonian(particle_ops, μ, Δ, w, λ, Φ, U, Vz)
     ham += sum(ham_dot_sp) + sum(ham_dot_int)
     return ham
 end
+
+# function hamiltonian(particle_ops, μ, Δ, w, λ, Φ, U, Vz)
+#     d = particle_ops
+#     N = QuantumDots.nbr_of_fermions(d) ÷ 2
+#     ham_dot_sp = ((μ - eta(σ)*Vz)*d[j,σ]'d[j,σ] for j in 1:N, σ in (:↑, :↓))
+#     ham_dot_int = (U*d[j,:↑]'d[j,:↑]*d[j,:↓]'d[j,:↓] for j in 1:N)
+#     ham_tun_normal = (w*cos(λ)*d[j, σ]'d[j+1, σ] for j in 1:N-1, σ in (:↑, :↓))
+#     ham_tun_flip = (w*sin(λ)*(d[j, :↑]'d[j+1, :↓] - d[j, :↓]'d[j+1, :↑]) for j in 1:N-1) 
+#     ham_sc = (Δ*exp(1im*Φ)*d[j, :↑]'d[j, :↓]' for j in 1:N)
+#     ham = sum(ham_tun_normal) + sum(ham_tun_flip) + sum(ham_sc)
+#     # add conjugates
+#     ham += ham'
+#     ham += sum(ham_dot_sp) + sum(ham_dot_int)
+#     return ham
+# end
 
 # function hamiltonian(particle_ops, μ, Δ, w, λ, Φ, U, Vz)
 #     # is this slow?
@@ -54,12 +91,19 @@ function groundindices(particle_ops, vecs, energies)
     return evenindices[1]::Int, oddindices[1]::Int
 end
 
-function mpspinful(particle_ops, oddstate, evenstate)
+function mpspinful(particle_ops, oddstate::AbstractVector, evenstate::AbstractVector)
     d = particle_ops
-    N = QuantumDots.nbr_of_fermions(d)
-    acoeffs = real.([oddstate'*(d[j, σ]' + d[j, σ])*evenstate for j in 1:N÷2, σ in (:↑, :↓)])
-    bcoeffs = -1*imag.([oddstate'*1im*(d[j, σ]' - d[j, σ])*evenstate for j in 1:N÷2, σ in (:↑, :↓)])
+    sites = QuantumDots.nbr_of_fermions(d) ÷ 2
+    n = sites÷2 + sites % 2  # sum over half of the sites plus middle if odd
+    acoeffs = real.([oddstate'*(d[j, σ]' + d[j, σ])*evenstate for j in 1:n, σ in (:↑, :↓)])
+    bcoeffs = -1*imag.([oddstate'*1im*(d[j, σ]' - d[j, σ])*evenstate for j in 1:n, σ in (:↑, :↓)])
     return sum(acoeffs.^2 .- bcoeffs.^2)
+end
+
+function mpspinful(particle_ops, ham::AbstractMatrix)
+    energies, vecs = eigen!(Matrix{ComplexF64}(ham))
+    even, odd = groundindices(particle_ops, eachcol(vecs), energies)
+    return mpspinful(particle_ops, vecs[:, odd], vecs[:, even])
 end
 
 function mpkitaev(particle_ops, oddstate, evenstate)

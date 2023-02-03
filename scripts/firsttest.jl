@@ -24,16 +24,27 @@ function scan_gapmp_kitaev_heatmap(ϵvec, Δvec, t, N)
     return gaps, mps
 end
 
-function scan_gapmp_localpairing(μ, Δ, w, λvals, Φ, U, Vz, N)
+# function scan_gapmp_localpairing(μvals, Δvals, w, λvals, Φ, U, Vz, N)
+function scan_gapmp_1d(scan_params, fix_params, N, ham, points)
     d = FermionBasis((1:N), (:↑, :↓))
-    points = length(λvals)
     gaps = zeros(Float64, points)
     mps = zeros(Float64, points)
-    λ = zeros(N)
+    params = Dict("μ"=>zeros(N), "Δ"=>zeros(N), "w"=>zeros(N-1), "λ"=>zeros(N-1),
+                  "Φ"=>zeros(N), "U"=>0, "Vz"=>0)
+    # maybe merge and copy scan_params and fix_params instead of above
+    for (p, val) in fix_params
+        params[p] = val
+    end
     for i = 1:points
-        fill!(λ, λvals[i])
-        ham = hamiltonian(d, μ, Δ, w, λ, Φ, U, Vz)
-        energies, vecs = eigen!(Matrix{ComplexF64}(ham))
+        for (p, val) in scan_params
+            if params[p] isa Number
+                params[p] = val[i]
+            else
+                fill!(params[p], val[i])
+            end
+        end
+        H = ham(d, params)
+        energies, vecs = eigen!(Matrix{ComplexF64}(H))
         even, odd = groundindices(d, eachcol(vecs), energies)
         gaps[i] = energies[even] - energies[odd]
         mps[i] = mpspinful(d, vecs[:,odd], vecs[:,even])
@@ -49,26 +60,45 @@ function plot_gapmp_heatmap(gap, mp, ϵ, Δ)
     ylabel!("energy gap")
 end
 
-function plot_gapmp1d(gap, mp, λ)
-    gapsplot = plot(λ, gap)
-    mpplot = plot(λ, mp)
-    display(plot(gapsplot, mpplot, layout = 2))
+function run_calc_localtokitaev()
+    N = 2
+    points = 100
+    w0 = 1
+    w = fill(w0, N-1)
+    Vz = 100*w0
+    α0 = pi/12
+    α = fill(α0, points)
+    λ = range(1.8*pi, 1.9*pi, points)
+    t = cos(λ[1])*sin(2*α0)
+    println(t)
+    α[2:end] = [asin(t/cos(λ[i]))/2 for i in 2:points]
+    μ = [Vz*sin(2*α[i]) for i in 1:points]
+    Δind = [Vz*cos(2*α[i]) for i in 1:points]
+    Φ = fill(0, N)
+    U = 0
+    gap, mp = scan_gapmp_localpairing(μ, Δind, w, λ, Φ, U, Vz, N)
+    plot_gapmp1d(gap, mp, λ)
+    println([-sin(λ[i])*cos(2α[i]) for i in 1:points])
 end
 
 function main()
     N = 3
     points = 100
     w0 = 1
-    Vz = 100*w0
-    α = 2*pi/5
     w = fill(w0, N-1)
-    μ = fill(Vz*sin(2α), N)
-    Δind = fill(Vz*cos(2α), N)
+    Vz = 100*w0
+    α = 0.2*pi
+    λ = range(0.1*pi, 0.5*pi, points)
+    μ = fill(Vz*sin(2*α), N)
+    Δind = fill(Vz*cos(2*α), N)
     Φ = fill(0, N)
-    λ = range(pi/8, pi/4, points)
     U = 0
-    gap, mp = scan_gapmp_localpairing(μ, Δind, w, λ, Φ, U, Vz, N)
-    plot_gapmp1d(gap, mp, λ)
+    scan_params = Dict("λ"=>λ)
+    fix_params = Dict("μ"=>μ, "Δ"=>Δind, "w"=>w, "Φ"=>Φ, "U"=>U, "Vz"=>Vz) 
+    gap, mp = scan_gapmp_1d(scan_params, fix_params, N, hamiltonian, points)
+    gapplot = plot(λ, gap)
+    mpplot = plot(λ, mp)
+    display(plot(gapplot, mpplot, layout=2))
 end
 end
 
