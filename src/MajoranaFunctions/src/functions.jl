@@ -26,9 +26,7 @@ function localpairingham(particle_ops, params)
     return ham
 end
 
-function eta(spin)
-    return spin == :↑ ? -1 : 1
-end
+eta(spin) = spin == :↑ ? -1 : 1
 
 function kitaev(particle_ops, params)
     d = particle_ops
@@ -49,26 +47,40 @@ end
 function groundindices(particle_ops, vecs, energies)
     parityop = parityoperator(particle_ops)
     parities = [v'parityop*v for v in vecs]
-    evenindices = findall(parity -> parity ≈ 1, parities)
-    oddindices = setdiff(1:length(energies), evenindices)
+    # evenindices = findall(parity -> parity ≈ 1.0, parities)
+    atol = 1e-4
+    evenindices = findall(parity -> isapprox(parity, 1; atol=atol), parities)
+    oddindices = findall(parity -> isapprox(parity, -1; atol=atol), parities)
+    # oddindices = setdiff(1:length(energies), evenindices)
     return evenindices[1]::Int, oddindices[1]::Int
+end
+
+function calcmp(plusmajoranas, minusmajoranas, oddstate, evenstate)
+    plus_matrixelements = (oddstate'*majplus*evenstate for majplus in plusmajoranas)
+    minus_matrixelements = (oddstate'*majminus*evenstate for majminus in minusmajoranas)
+    aplus = real.(plus_matrixelements)
+    aminus = real.(minus_matrixelements)
+    bplus = -imag.(plus_matrixelements)
+    bminus = -imag.(minus_matrixelements)
+    return sum(aplus.^2 .+ aminus.^2 .- bplus.^2 .- bminus.^2)
 end
 
 function majoranapolarization(particle_ops::FermionBasis{M, S, T, Sym}, oddstate, evenstate) where {M, S<:Tuple, T, Sym}
     d = particle_ops
     sites = QuantumDots.nbr_of_fermions(d) ÷ 2
     n = sites÷2 + sites % 2  # sum over half of the sites plus middle if odd
-    acoeffs = real.([oddstate'*(d[j, σ]' + d[j, σ])*evenstate for j in 1:n, σ in (:↑, :↓)])
-    bcoeffs = -1*imag.([oddstate'*1im*(d[j, σ]' - d[j, σ])*evenstate for j in 1:n, σ in (:↑, :↓)])
-    return sum(acoeffs.^2 .- bcoeffs.^2)
+    plusmajoranas = (d[j, σ]' + d[j, σ] for j in 1:n, σ in (:↑, :↓))
+    minusmajoranas = (1im*(d[j, σ]' - d[j, σ]) for j in 1:n, σ in (:↑, :↓))
+    return calcmp(plusmajoranas, minusmajoranas, oddstate, evenstate)
 end
 
 function majoranapolarization(particle_ops::FermionBasis{M, S, T, Sym}, oddstate, evenstate) where {M, S<:Number, T, Sym}
     d = particle_ops
-    N = QuantumDots.nbr_of_fermions(d)
-    acoeffs = real.([oddstate'*(d[j]' + d[j])*evenstate for j in 1:N÷2])
-    bcoeffs = -1*imag.([oddstate'*1im*(d[j]' - d[j])*evenstate for j in 1:N÷2])
-    return sum(acoeffs.^2 .- bcoeffs.^2)
+    sites = QuantumDots.nbr_of_fermions(d)
+    n = sites÷2 + sites % 2  # sum over half of the sites plus middle if odd
+    plusmajoranas = (d[j]' + d[j] for j in 1:n)
+    minusmajoranas = (1im*(d[j]' - d[j]) for j in 1:n)
+    return calcmp(plusmajoranas, minusmajoranas, oddstate, evenstate)
 end
 
 function majoranapolarization(particle_ops, ham)
