@@ -3,6 +3,7 @@ authors = ["William Samuelson"]
 
 [deps]
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 MajoranaFunctions = "bb27fe77-b015-4b10-a214-8ec769d9e422"
 QuantumDots = "312194fd-fec5-4b07-ba1c-a40d7013a56a"
 

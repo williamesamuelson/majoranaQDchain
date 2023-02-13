@@ -1,6 +1,6 @@
 module MajoranaFunctions
 using QuantumDots
 using LinearAlgebra
-export hamiltonian, kitaev, mpspinful, mpkitaev, groundindices
+export localpairingham, kitaev, majoranapolarization, groundindices
 include("functions.jl")
 end # module MajoranaFunctions

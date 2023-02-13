@@ -100,4 +100,13 @@ Handed in hand-in. Structuring code. Confused about Revise when editing multiple
 \end{itemize}
 \section*{February 2nd}
 Worked on figuring out workflow. Created package/module in src and structured everything, works now with Revise. Started with some scans of MP and gap for the local pairing model. Need to figure out how to set variables and scan $\lambda$ to reach sweet spot $t=\Delta$. Should try implementing MP with $a, b$ operators.
+\section*{February 3rd}
+Did scans of $\lambda$, keeping everything else constant and reached sweet spot at $\lambda = 2\alpha$. Tried working on scanning $\lambda$, changing Kitaev $\Delta$ but keeping $t$ constant, a bit tricky. Also worked on the setup of the Hamiltonian. I believe it's best to keep all parameters in a dictionary. Contemplating whether to keep the option for having varying parameters across the chain. Wrote something to be able to vary different stuff in a 1d scan, don't know if it's great. Should write a general Majorana polarization function which automatically does the Kitaev/spinful calculation depending on input.
+\section*{February 13th}
+Changed the hamiltonians to taking the parameters in a dictionary instead. Kept the option to vary parameters across chain, even expanded it to Coulomb and Zeeman also. Fixed the function to vary stuff in a 1d scan. Now it can be used for both Kitaev and local pairing. Fixed the Majorana polarization function such that it can do both spinless and spinful. Did some plots scanning $\lambda$, confused about 2 things
+\begin{itemize}
+    \item Seems to be more sweet spots than expected
+    \item Odd number of dots seems to drastically change how much the energy gap varies
+\end{itemize}
+Should do a proper calculation of sweet spots and think about how to do the local pairing vs kitaev plot.
 \end{document}
