@@ -1,4 +1,4 @@
-module FirstTest
+module Calc
 using DrWatson
 @quickactivate "majoranaQDchain"
 using QuantumDots
@@ -36,39 +36,44 @@ function format_scan(scan_params, N)
 end
 
 function localvskitaev()
-    sites = 3
+    sites = 4
     points = 100
     t0 = 1
     t = fill(t0, sites-1)
     Δ = collect(range(-2t0, 2t0, points))
     ϵ = zeros(sites)
     scan_params_kitaev = Dict("Δ"=>Δ)
-    fix_params_kitaev = Dict("ϵ"=>ϵ, "t"=>t) 
-    gapkitaev, mpkitaev = scan_gapmp_1d(scan_params_kitaev, fix_params_kitaev, kitaev, points, sites)
+    fix_params_kitaev = Dict("ϵ"=>ϵ, "t"=>t)
+    gapkitaev, mpkitaev = scan_gapmp_1d(scan_params_kitaev, fix_params_kitaev,
+                                        kitaev, points, sites)
     α = 0.2*π
     λ = atan.(Δ*tan(2α)/t0)
     w = t0./(cos.(λ)*sin(2α))
     Φ = fill(0, sites)
-    U = fill(0, sites)
-    Plots.scalefontsizes()
-    Plots.scalefontsizes(0.9)
+    Uscal = 10
+    U = fill(Uscal*t0, sites)
     Vzscalings = [1 5 1e4]
-    plots = []
+    innerplots = []
+	plot_font = "Computer Modern"
+	default(fontfamily=plot_font, linewidth=2, framestyle=:box,
+            label=nothing, grid=false)
+    scalefontsizes()
+    scalefontsizes(0.8)
     for Vzscal in Vzscalings
-        Vz = Vzscal*w
+        Vz = fill(Vzscal*t0, sites)
         μ = Vz*sin(2*α)
         Δind = Vz*cos(2*α)
         scan_params = Dict("λ"=>λ, "w"=>w)
         fix_params = Dict("μ"=>μ, "Δind"=>Δind, "Φ"=>Φ, "U"=>U, "Vz"=>Vz) 
         gap, mp = scan_gapmp_1d(scan_params, fix_params, localpairingham, points, sites)
         gapplot = plot(Δ, [gap gapkitaev], yaxis=L"\delta E")
-        mpplot = plot(Δ, [abs.(mp) abs.(mpkitaev)], yaxis=L"|MP|")
-        push!(plots, plot(gapplot, mpplot, labels=["Local" "Kitaev"],
-                          xaxis=L"Δ/t", lw=2, title=L"V_z=%$Vzscal w", dpi=300))
+        mpplot = plot(Δ, [abs.(mp) abs.(mpkitaev)], yaxis=L"|MP|", labels=["Local" "Kitaev"])
+        push!(innerplots, plot(gapplot, mpplot,
+                               xaxis=L"Δ/t", lw=2, title=L"V_z=%$Vzscal t", dpi=300))
     end
-    p = plot((p for p in plots)..., layout=(4,1))
+    p = plot((pl for pl in innerplots)..., layout=(4,1), plot_title=L"U=%$Uscal t")
     display(plot(p))
-    # params = @strdict sites α
+    # params = @strdict sites α Uscal
     # save = "localvskitaev"*savename(params)
     # png(plotsdir("localvskitaev", save))
 end
