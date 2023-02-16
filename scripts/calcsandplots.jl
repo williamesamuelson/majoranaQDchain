@@ -50,9 +50,9 @@ function localvskitaev()
     λ = atan.(Δ*tan(2α)/t0)
     w = t0./(cos.(λ)*sin(2α))
     Φ = fill(0, sites)
-    Uscal = 20
+    Uscal = 1
     U = fill(Uscal*t0, sites)
-    Vzscalings = [1 5 1e5]
+    Vzscalings = [1 5 1e7]
     innerplots = []
 	plot_font = "Computer Modern"
 	default(fontfamily=plot_font, linewidth=2, framestyle=:box,
@@ -61,7 +61,7 @@ function localvskitaev()
     scalefontsizes(0.8)
     for Vzscal in Vzscalings
         Vz = fill(Vzscal*t0, sites)
-        μ = Vz*sin(2α)
+        μ = Vz*sin(2α) + U
         Δind = Vz*cos(2α)
         scan_params = Dict("λ"=>λ, "w"=>w)
         fix_params = Dict("μ"=>μ, "Δind"=>Δind, "Φ"=>Φ, "U"=>U, "Vz"=>Vz) 
