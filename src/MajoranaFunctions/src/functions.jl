@@ -88,3 +88,9 @@ function majoranapolarization(particle_ops, ham)
     even, odd = groundindices(particle_ops, eachcol(vecs), energies)
     return majoranapolarization(particle_ops, vecs[:, odd], vecs[:, even])
 end
+
+function dρ_calc(particle_ops, oddstate, evenstate, labels)
+    ρe, ρo = map(ψ -> QuantumDots.reduced_density_matrix(ψ, labels, particle_ops),
+                 (evenstate, oddstate))
+    return norm(ρe - ρo)^2
+end

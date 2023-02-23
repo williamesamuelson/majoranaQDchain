@@ -34,11 +34,17 @@ end
 function scan_gapmp_2d(xscan_params, yscan_params, fix_params, ham_fun, points, sites)
     if ham_fun == kitaev
         d = FermionBasis(1:sites)
+        sites = QuantumDots.nbr_of_fermions(d)
+        labels = collect((i in 2:sites))
     else
         d = FermionBasis((1:sites), (:↑, :↓))
+        sites = QuantumDots.nbr_of_fermions(d) ÷ 2
+        labels = collect(((i,σ) for i in 2:sites, σ in (:↑, :↓)))
     end
+    labels = ntuple(i->labels[i], length(labels))
     gaps = zeros(Float64, points, points)
     mps = zeros(Float64, points, points)
+    dρs = zeros(Float64, points, points)
     xformattedscan = format_scan(xscan_params, sites)
     yformattedscan = format_scan(yscan_params, sites)
     params = merge(xformattedscan, yformattedscan, fix_params)
@@ -55,9 +61,10 @@ function scan_gapmp_2d(xscan_params, yscan_params, fix_params, ham_fun, points, 
             even, odd = groundindices(d, eachcol(vecs), energies)
             gaps[i, j] = energies[even] - energies[odd]
             mps[i, j] = majoranapolarization(d, vecs[:,odd], vecs[:,even])
+            dρs[i, j] = dρ_calc(d, vecs[:, odd], vecs[:, even], labels)
         end
     end
-    return gaps, mps
+    return gaps, mps, dρs
 end
 
 function format_scan(scan_params, N)
@@ -118,31 +125,33 @@ function twodimscan()
     t0 = 1
     t = fill(t0, sites-1)
     Δ = collect(range(-2t0, 2t0, points))
-    α = 0.2*π
+    α = 0.3*π
     Φ = fill(0, sites)
     λ = atan.(Δ*tan(2α)/t0)
     w = t0./(cos.(λ)*sin(2α))
-    Uscal = 5
+    Uscal = 0.1
     U = fill(Uscal*t0, sites)
-    Vzscal = 1e5
+    Vzscal = 1e3
     Vz = fill(Vzscal*t0, sites)
     Δind = Vz*cos(2α)
-    dμ = 6*w0
+    dμ = 2*w0
     func = getfunc(Δind[1], Vz[1], U[1])
     μguess = find_zero(func, Vz[1]+U[1])
     μ = collect(range(μguess-dμ, μguess+dμ, points))
     xscan_params = Dict("λ"=>λ, "w"=>w)
     yscan_params = Dict("μ"=>μ)
     fix_params = Dict("Δind"=>Δind, "Φ"=>Φ, "U"=>U, "Vz"=>Vz) 
-    gap, mp = scan_gapmp_2d(xscan_params, yscan_params, fix_params, localpairingham, points, sites)
+    gap, mp, dρsq = scan_gapmp_2d(xscan_params, yscan_params, fix_params, localpairingham, points, sites)
 	plot_font = "Computer Modern"
 	default(fontfamily=plot_font, linewidth=2, framestyle=:box,
             label=nothing, grid=false)
     scalefontsizes()
-    scalefontsizes(0.8)
-    p = heatmap(Δ, μ, abs.(mp), c=:BuPu) 
+    scalefontsizes(1.3)
+    p = heatmap(Δ, μ, dρsq, c=:acton, clims=(-1e-9, maximum(dρsq)))
     contour!(p, Δ, μ, gap, levels=[0.0], c=:green, colorbar_entry=false)
-    display(plot(p)) 
+    display(plot(p, xlabel=L"\Delta_{eff}(w, \lambda)/t", ylabel=L"\mu/t",
+                 colorbar_title=L"||\delta \rho_R||^2"))
+                 
 end
 end
 
