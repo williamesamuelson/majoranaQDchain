@@ -130,4 +130,16 @@ Meeting about Quantum seminars and then device meeting. Discussion about summer 
 Been checking the algebra for U term. Seems ok. Solved the equation numerically, however does not reach sweet spot anyways. Might have to do with the rest of the scan (restrictions on $w$ and $\lambda$). Wrote something to do 2d scans instead.
 \section*{February 21--22nd}
 21st, Copenhagen. 22nd, did 2d scans with effective Kitaev Delta and mu, found bug. Now I see sweet spots. Consider moving hamiltonian to QuantumDots package instead with homogeneous chain. Seems like something is wrong with my renormalization due to Coulomb, my guess for the sweet spot is wrong. Annoying. Looked at reduced density matrix. Trying to understand again. Tomorrow, use reduced density matrix function from quantum dots package. Plot. Maybe move Hamiltonian. Write tests (should've done before). Look at outline for thesis.
+\section*{February 23--24th}
+Implementing the $\delta\rho$ measure. Started looking at the outline of thesis. Created document. Still something wrong with guess for sweet spot. Viktor found the mistake! I cannot remove $bb^\dagger = 1$, only $b^\dagger b = 0$! Fixed the problem. Wrote a function to find sweet spot from scan. Ideas to do next week: 
+\begin{itemize}
+    \item Journal club Dvir?
+    \item Plot measures at sweet spot with varying $V$.
+    \item Write tests
+    \item Performance issues? Tidy up. Maybe move hams to QuantumDots.
+    \item What plots do I want?
+    \item Look more into the tuning in Akhmerov?
+    \item 2D scans with a different x-axis, more experimentally feasible?
+    \item Additional contour lines.
+\end{itemize}
 \end{document}

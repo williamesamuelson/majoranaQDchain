@@ -94,3 +94,5 @@ function dρ_calc(particle_ops, oddstate, evenstate, labels)
                  (evenstate, oddstate))
     return norm(ρe - ρo)^2
 end
+
+sweetspot(gapsq, measure) = argmin(gapsq .+ measure)
