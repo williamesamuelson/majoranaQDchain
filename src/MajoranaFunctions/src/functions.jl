@@ -3,7 +3,7 @@ function lengthofparams(N)
                 "ϵ"=>N, "Δ"=>N, "t"=>N-1)
 end
 
-function localpairingham(particle_ops, params)
+function localpairingham(particle_ops, params::Dict{String, Vector})
     d = particle_ops
     N = QuantumDots.nbr_of_fermions(d) ÷ 2
     p = params
@@ -26,9 +26,23 @@ function localpairingham(particle_ops, params)
     return ham
 end
 
+function localpairingham(particle_ops, params)
+    N = QuantumDots.nbr_of_fermions(particle_ops) ÷ 2
+    lop = lengthofparams(N)
+    newparams = Dict{String, Vector}(p=>zeros(lop[p]) for p in keys(params))
+    for (p, val) in params
+        if val isa Number
+            fill!(newparams[p], val)
+        else
+            newparams[p] = val 
+        end
+    end
+    return localpairingham(particle_ops, newparams)
+end
+
 η(spin) = spin == :↑ ? -1 : 1
 
-function kitaev(particle_ops, params)
+function kitaev(particle_ops, params::Dict{String, Vector})
     d = particle_ops
     N = QuantumDots.nbr_of_fermions(d)
     p = params
@@ -44,6 +58,17 @@ function kitaev(particle_ops, params)
     return ham
 end
 
+function measures(particle_ops, ham_fun, params)
+        H = ham_fun(particle_ops, params)
+        energies, vecs = eigen!(Hermitian(Matrix(H)))
+        even, odd = groundindices(particle_ops, eachcol(vecs), energies)
+        top_gap = energies[3] - energies[1]
+        gap = (energies[even] - energies[odd])/top_gap #normalize to gap
+        mp = majoranapolarization(particle_ops, vecs[:,odd], vecs[:,even])
+        dρ = robustness(particle_ops, vecs[:, odd], vecs[:, even])
+        return gap, mp, dρ
+end
+
 function groundindices(particle_ops, vecs, energies)
     parityop = parityoperator(particle_ops)
     parities = [v'parityop*v for v in vecs]
@@ -55,7 +80,7 @@ function groundindices(particle_ops, vecs, energies)
     return evenindices[1]::Int, oddindices[1]::Int
 end
 
-function calcmp(plusmajoranas, minusmajoranas, oddstate, evenstate)
+function majoranapolarization(plusmajoranas, minusmajoranas, oddstate, evenstate)
     plus_matrixelements = (oddstate'*majplus*evenstate for majplus in plusmajoranas)
     minus_matrixelements = (oddstate'*majminus*evenstate for majminus in minusmajoranas)
     aplus = real.(plus_matrixelements)
@@ -71,7 +96,7 @@ function majoranapolarization(particle_ops::FermionBasis{M, S, T, Sym}, oddstate
     n = sites÷2 + sites % 2  # sum over half of the sites plus middle if odd
     plusmajoranas = (d[j, σ]' + d[j, σ] for j in 1:n, σ in (:↑, :↓))
     minusmajoranas = (1im*(d[j, σ]' - d[j, σ]) for j in 1:n, σ in (:↑, :↓))
-    return calcmp(plusmajoranas, minusmajoranas, oddstate, evenstate)
+    return majoranapolarization(plusmajoranas, minusmajoranas, oddstate, evenstate)
 end
 
 function majoranapolarization(particle_ops::FermionBasis{M, S, T, Sym}, oddstate, evenstate) where {M, S<:Number, T, Sym}
@@ -80,19 +105,35 @@ function majoranapolarization(particle_ops::FermionBasis{M, S, T, Sym}, oddstate
     n = sites÷2 + sites % 2  # sum over half of the sites plus middle if odd
     plusmajoranas = (d[j]' + d[j] for j in 1:n)
     minusmajoranas = (1im*(d[j]' - d[j]) for j in 1:n)
-    return calcmp(plusmajoranas, minusmajoranas, oddstate, evenstate)
+    return majoranapolarization(plusmajoranas, minusmajoranas, oddstate, evenstate)
 end
 
 function majoranapolarization(particle_ops, ham)
-    energies, vecs = eigen!(Matrix{ComplexF64}(ham))
+    energies, vecs = eigen!(Hermitian(Matrix(ham)))
     even, odd = groundindices(particle_ops, eachcol(vecs), energies)
     return majoranapolarization(particle_ops, vecs[:, odd], vecs[:, even])
 end
 
-function dρ_calc(particle_ops, oddstate, evenstate, labels)
+function robustness(particle_ops, oddstate, evenstate, labels)
+    labels = ntuple(i->labels[i], length(labels))
     ρe, ρo = map(ψ -> QuantumDots.reduced_density_matrix(ψ, labels, particle_ops),
                  (evenstate, oddstate))
     return norm(ρe - ρo)^2
 end
 
-sweetspot(gapsq, measure) = argmin(gapsq .+ measure)
+function robustness(particle_ops::FermionBasis{M, S, T, Sym}, oddstate, evenstate) where {M, S<:Tuple, T, Sym}
+    sites = QuantumDots.nbr_of_fermions(particle_ops) ÷ 2
+    labels = collect((i,σ) for i in 2:sites, σ in (:↑, :↓)) # correct??
+    return robustness(particle_ops, oddstate, evenstate, labels)
+end
+
+function robustness(particle_ops::FermionBasis{M, S, T, Sym}, oddstate, evenstate) where {M, S<:Number, T, Sym}
+    sites = QuantumDots.nbr_of_fermions(particle_ops)
+    labels = collect(i in 2:sites) # correct??
+    return robustness(particle_ops, oddstate, evenstate, labels)
+end
+
+function sweetspotguess(gap, dρsq, Δ, μ)
+    ind = argmin(gap.^2 .+ dρsq)
+    return [Δ[ind[2]], μ[ind[1]]]
+end
