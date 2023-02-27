@@ -14,7 +14,7 @@ function localpairingham(particle_ops, params)
     Φ = p["Φ"]
     U = p["U"]
     Vz = p["Vz"]
-    ham_dot_sp = ((μ[j] - eta(σ)*Vz[j])*d[j,σ]'d[j,σ] for j in 1:N, σ in (:↑, :↓))
+    ham_dot_sp = ((μ[j] - η(σ)*Vz[j])*d[j,σ]'d[j,σ] for j in 1:N, σ in (:↑, :↓))
     ham_dot_int = (U[j]*d[j,:↑]'d[j,:↑]*d[j,:↓]'d[j,:↓] for j in 1:N)
     ham_tun_normal = (w[j]*cos(λ[j])*d[j, σ]'d[j+1, σ] for j in 1:N-1, σ in (:↑, :↓))
     ham_tun_flip = (w[j]*sin(λ[j])*(d[j, :↑]'d[j+1, :↓] - d[j, :↓]'d[j+1, :↑]) for j in 1:N-1) 
@@ -26,7 +26,7 @@ function localpairingham(particle_ops, params)
     return ham
 end
 
-eta(spin) = spin == :↑ ? -1 : 1
+η(spin) = spin == :↑ ? -1 : 1
 
 function kitaev(particle_ops, params)
     d = particle_ops
