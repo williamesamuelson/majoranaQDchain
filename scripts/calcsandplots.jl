@@ -94,10 +94,10 @@ function initializeplot()
     scalefontsizes(1.3)
 end
 
-function twodimscan(ssopt=false)
+function twodimscan()
     sites = 2
     d = FermionBasis((1:sites), (:↑, :↓))
-    points = 30
+    points = 10
     # Kitaev params
     t = 1
     Δ = collect(range(-2t, 2t, points))
@@ -105,10 +105,10 @@ function twodimscan(ssopt=false)
     α = 0.2*π
     w, λ = kitaevtoakhmerovparams(t, Δ, α)
     Φ = 0
-    U = 10
-    Vz = 1e2
+    U = 1
+    Vz = 3
     Δind = Vz*cos(2α)
-    dμ = 3*t
+    dμ = 2*t
     μval = μguess(Δind, Vz, U)
     μ = collect(range(μval-dμ, μval+dμ, points))
     xparams = Dict("λ"=>λ, "w"=>w)
@@ -116,10 +116,9 @@ function twodimscan(ssopt=false)
     fix_params = Dict("Δind"=>Δind, "Φ"=>Φ, "U"=>U, "Vz"=>Vz) 
     @time gap, mp, dρsq = scan2d(xparams, yparams, fix_params, d, localpairingham, points, sites)
     opt_params = Dict("μ"=>0, "w"=>0, "λ"=>0)
-    # ssguess = MajoranaFunctions.sweetspotguess(gap, dρsq, Δ, μ)
     ssguess = [t, μval]
     @time sweetspot, gapss, dρsqss = optimizesweetspot(d, merge(fix_params, opt_params), t, α,
-                                           [(Δ[1], Δ[end]), (μ[1], μ[end])], ssguess, 100)
+                                                       [(Δ[end ÷ 2], Δ[end]), (μ[1], μ[end])], ssguess, 100)
     initializeplot()
     p = heatmap(Δ, μ.-μval, dρsq, c=:acton)
     contourlvl = 0.05
@@ -128,10 +127,14 @@ function twodimscan(ssopt=false)
     for i in 1:length(lvls)
         contour!(p, Δ, μ.-μval, gap, levels=lvls[i], c=clrs[i], colorbar_entry=false)
     end
-    scatter!(p, [sweetspot[1]], [sweetspot[2] - μval], c=:cyan)
-    scatter!(p, [t], [0], c=:red)
-    display(plot(p, xlabel=L"\Delta_{eff}(w, \lambda)/t", ylabel=L"(\mu-\mu_{ss})/t",
-                 colorbar_title=L"||\delta \rho_R||^2"))
+    scatter!(p, [sweetspot[1]], [sweetspot[2] - μval], c=:cyan, legend=false)
+    # scatter!(p, [t], [0], c=:red)
+    display(plot(p, xlabel=L"\Delta_{Kitaev}(w, \lambda)/t_{Kitaev}", ylabel=L"(\mu-\mu_{ss})/t_{Kitaev}",
+                 colorbar_title=L"||\delta \rho_R||^2", title=L"N=%$sites, U=%$U, V_z=%$Vz"))
+    # params = @strdict sites U Vz
+    # save = "2dscan"*savename(params)
+    # png(plotsdir("2dscans", save))
+
 end
 
 function sweetspotzeeman(sites, params, Vz::Vector, t, α)
@@ -143,31 +146,30 @@ function sweetspotzeeman(sites, params, Vz::Vector, t, α)
         Δind = Vz[j]*cos(2α)
         ssguess = [t, μguess(Δind, Vz[j], params["U"])]
         params["Vz"], params["Δind"] = Vz[j], Δind
-        diffs = [3t, t]
+        diffs = [3t, 2t]
         range = [(ssguess[i] - diffs[i], ssguess[i] + diffs[i]) for i in 1:2]
-        _, gaps[j], dρs[j] = optimizesweetspot(d, params, t, α, range, ssguess, 30)
+        _, gaps[j], dρs[j] = optimizesweetspot(d, params, t, α, range, ssguess, 20)
     end
     return gaps, dρs
 end
 
 function calc()
-    sites = 3
+    sites = 2
     # Kitaev params
     t = 1
     # Akhmerov params
     α = 0.2*π
     Φ = 0
     U = 1
-    Vz = [1e1, 1e2, 1e3, 1e4]
+    Vz = [3, 10, 1e2, 1e3, 1e4]
     Δind = Vz*cos(2α)
     params = Dict("μ"=>0, "w"=>0, "λ"=>0, "Δind"=>Δind, "Φ"=>Φ, "U"=>U, "Vz"=>0) 
-    return sweetspotzeeman(sites, params, Vz, t, α), Vz
-end
-
-function test()
-    (gaps, dρs), Vz = calc()
+    gaps, dρs = sweetspotzeeman(sites, params, Vz, t, α)
     initializeplot()
-    p = plot(Vz, [gaps.^2 dρs], label=[L"\delta E" L"\delta \rho"], xscale=:log10, yscale=:log10)
-    display(plot(p, xlabel=L"V_z/t"))
+    p = plot(Vz, [gaps.^2 dρs], label=[L"\delta E" L"\delta \rho"], xscale=:log10, yscale=:log10, 
+             markershape=:auto, xlabel=L"V_z/t_{Kitaev}", title=L"N=%$sites, U=%$U")
+    # params = @strdict sites U
+    # save = "ssvarzeeman"*savename(params)
+    # png(plotsdir("ssvarzeeman", save))
 end
 end

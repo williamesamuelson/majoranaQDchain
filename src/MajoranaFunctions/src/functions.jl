@@ -123,13 +123,15 @@ end
 
 function robustness(particle_ops::FermionBasis{M, S, T, Sym}, oddstate, evenstate) where {M, S<:Tuple, T, Sym}
     sites = QuantumDots.nbr_of_fermions(particle_ops) ÷ 2
-    labels = collect((i,σ) for i in 2:sites, σ in (:↑, :↓)) # correct??
+    n = sites÷2 + sites % 2 + 1
+    labels = collect((i,σ) for i in n:sites, σ in (:↑, :↓)) # correct??
     return robustness(particle_ops, oddstate, evenstate, labels)
 end
 
 function robustness(particle_ops::FermionBasis{M, S, T, Sym}, oddstate, evenstate) where {M, S<:Number, T, Sym}
     sites = QuantumDots.nbr_of_fermions(particle_ops)
-    labels = collect(i in 2:sites) # correct??
+    n = sites÷2 + sites % 2  + 1 # sum over half of the sites plus middle if odd
+    labels = collect(i in n:sites) # correct??
     return robustness(particle_ops, oddstate, evenstate, labels)
 end
 
