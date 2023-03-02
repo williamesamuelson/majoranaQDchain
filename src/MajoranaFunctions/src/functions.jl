@@ -125,12 +125,13 @@ function majoranapolarization(particle_ops, ham)
     return majoranapolarization(particle_ops, vecs[:, odd], vecs[:, even])
 end
 
-function robustness(particle_ops, oddstate, evenstate, labels)
+function robustness(particle_ops, oddstate, evenstate, sitelabels)
     dρ = 0
-    sites = length(labels)
+    # maybe one parameter with indices corrresponding to correct sitelabels also
+    sites = length(sitelabels)
     for j in 1:sites
-        remove_indices = [i for i in 1:sites if i != j]
-        remove_labels = ntuple(i->labels[remove_indices[i]], sites-1)
+        keeplabels = tuple(sitelabels[j]...)
+        println(setdiff(sitelabels, keeplabels))
         ρe, ρo = map(ψ -> QuantumDots.reduced_density_matrix(ψ, remove_labels, particle_ops),
                     (evenstate, oddstate))
         dρ += norm(ρe - ρo)^2
@@ -140,8 +141,8 @@ end
 
 function robustness(particle_ops::FermionBasis{M, S, T, Sym}, oddstate, evenstate) where {M, S<:Tuple, T, Sym}
     sites = QuantumDots.nbr_of_fermions(particle_ops) ÷ 2
-    labels = collect((i,σ) for i in 1:sites, σ in (:↑, :↓)) # correct??
-    return robustness(particle_ops, oddstate, evenstate, labels)
+    sitelabels = [tuple(((i, σ) for σ in (:↑, :↓))...) for i in 1:sites]
+    return robustness(particle_ops, oddstate, evenstate, sitelabels)
 end
 
-robustness(particle_ops::FermionBasis{M, S, T, Sym}, oddstate, evenstate) where {M, S<:Number, T, Sym} = robustness(keys(particle_ops.dict), oddstate, evenstate, labels)
+robustness(particle_ops::FermionBasis{M, S, T, Sym}, oddstate, evenstate) where {M, S<:Number, T, Sym} = robustness(particle_ops, oddstate, evenstate, keys(particle_ops.dict))
