@@ -105,15 +105,19 @@ end
 
 # should make a function for the middle rows
 function optimizesweetspot(particle_ops, params::Dict{Symbol, T}, scansyms::NTuple{M, Symbol}, guess, range, maxtime) where {T,M}
-    opt_func = create_sweetspot_optfunc(particle_ops, params, scansyms, 1e7, 1e-8)
-    res = bboptimize(opt_func, guess, SearchRange=range, TraceMode=:compact,
-                     MaxTime=maxtime)
-    point = best_candidate(res)
+    weights = [1, 1e3, 1e6, 1e9]
+    for w in weights
+        opt_func = create_sweetspot_optfunc(particle_ops, params, scansyms, w, 1e-7)
+        res = bboptimize(opt_func, guess, SearchRange=range, TraceMode=:compact,
+                         MaxTime=maxtime)
+        guess = best_candidate(res)
+    end
+    point = guess
     for i in 1:length(scansyms)
         params[scansyms[i]] = point[i]
     end
     gap, mp, dρsq = measures(particle_ops, localpairingham, params)
-    return point, gap, dρsq
+    return point, gap, dρsq, mp
 end
 
 function initializeplot()
@@ -130,21 +134,21 @@ function twodimscan()
     w = 1.0
     λ = π/3
     Φ = 0w
-    U = 10w
-    Vz = 1e4w
+    U = 0w
+    Vz = 1w
     μval, Δindval = μΔind_init(λ, Vz, U)
-    dμ = 5w
-    dΔind = 5w
-    μ = collect(range(0.1, 1.2Vz, points))
-    Δind = collect(range(0.1Vz, 1.2Vz, points))
-    # μ = collect(range(μval - dμ, μval + dμ, points))
-    # Δind = collect(range(Δindval - dΔind, Δindval + dΔind, points))
+    dμ = 4w
+    dΔind = 4w
+    # μ = collect(range(0.1, 1.2Vz, points))
+    # Δind = collect(range(0.1, 1.2Vz, points))
+    μ = collect(range(μval - dμ, μval + dμ, points))
+    Δind = collect(range(Δindval - dΔind, Δindval + dΔind, points))
     xparams = Dict(:Δind=>Δind)
     yparams = Dict(:μ=>μ)
     fix_params = Dict(:w=>w, :λ=>λ, :Φ=>Φ, :U=>U, :Vz=>Vz) 
     @time gap, mp, dρsq = scan2d(xparams, yparams, fix_params, d, localpairingham, points, sites)
-    opt_params = merge(fix_params, Dict(:μ=>0, :Δind=>0))
-    range_opt = [(Δind[1], Δind[end]), (μ[1], μ[end])]
+    # opt_params = merge(fix_params, Dict(:μ=>0, :Δind=>0))
+    # range_opt = [(Δind[1], Δind[end]), (μ[1], μ[end])]
     # sweetspot, gapss, dρsqss = optimizesweetspot(d, opt_params, (:Δind, :μ), [Δindval, μval], range_opt, 20)
     initializeplot()
     p = heatmap(Δind, μ, dρsq, c=:acton)
@@ -164,19 +168,24 @@ function twodimscan()
 
 end
 
-function sweetspotzeeman(sites, params, Vz::Vector)
-    points = length(Vz)
+function sweetspotzeeman(simparams, maxtime)
+    @unpack w, λ, Φ, Vz, U, sites = simparams
+    println(Vz)
     d = FermionBasis((1:sites), (:↑, :↓))
-    gaps = zeros(points)
-    dρs = zeros(points)
+    points = length(Vz)
+    gaps = zeros(Float64, points)
+    dρs = zeros(Float64, points)
+    mps = zeros(Float64, points)
     for j in 1:points
-        params[:Vz] = Vz[j]
-        init = μΔind_init(params[:λ], params[:Vz], params[:U])
-        diffs = (5*params[:w], 5*params[:w])
+        init = μΔind_init(λ, Vz[j], U)
+        params = Dict(:μ=>init[2], :w=>w, :λ=>λ, :Δind=>init[1], :Φ=>Φ, :U=>U, :Vz=>Vz[j])
+        diffs = (5w, 5w)
         range = [(init[i] - diffs[i], init[i] + diffs[i]) for i in 1:2]
-        _, gaps[j], dρs[j] = optimizesweetspot(d, params, (:Δind, :μ), init, range, 20)
+        _, gaps[j], dρs[j], mps[j] = optimizesweetspot(d, params, (:Δind, :μ), init, range, maxtime)
     end
-    return gaps, dρs
+    fulld = copy(simparams)
+    fulld["gap"], fulld["dρ"], fulld["mp"] = gaps, dρs, mps
+    return fulld
 end
 
 function calc()
@@ -184,14 +193,30 @@ function calc()
     w = 1.0
     Φ = 0w
     λ = π/4
-    U = 0w
-    Vz = [1, 3, 10, 1e2].*w
-    params = Dict(:μ=>0w, :w=>w, :λ=>λ, :Δind=>0w, :Φ=>Φ, :U=>U, :Vz=>0w) 
-    gaps, dρs = sweetspotzeeman(sites, params, Vz)
+    U = [0, 1].*w
+    Vz = [0.3, 0.5, 0.8, 1, 5, 10, 50].*w
+    simparams = Dict("w"=>w, "λ"=>λ, "Φ"=>Φ, "Vz"=>[Vz], "U"=>U, "sites"=>sites)
+    dicts = dict_list(simparams)
+    println(dicts)
+    for d in dicts
+        res = sweetspotzeeman(d, 10)
+        @tagsave(datadir("sims", savename(d, "jld2")), res)
+    end
+    readdir(datadir("sims"))
+end
+
+function plotzeeman()
+	firstsim = readdir(datadir("sims"))[2]
+    dict = wload(datadir("sims", firstsim))
+    gap, dρ, mp, Vz, sites, U = dict["gaps"], dict["dρ"], dict["mp"], dict["Vz"], dict["sites"], dict["U"]
     initializeplot()
-    plot(Vz, abs.(gaps), label=L"|\delta E|", xscale=:log10, yscale=:log10, 
-             markershape=:auto, xlabel=L"V_z/w", title=L"N=%$sites, U=%$U")
-    p = plot!(twinx(), Vz, dρs, markershape=:circle)
+    plot(Vz, abs.(gap), label=L"|\delta E|", yscale=:log10, ylims=[1e-8, 1],
+             markershape=:circle, xlabel=L"V_z/w", title=L"N=%$sites, U=%$U", 
+            lc=:blue)
+    plot!(Vz, NaN.*(1:length(Vz)), label=L"\delta \rho", markershape=:diamond, 
+             lc=:orange, markercolor=:orange)
+    p = plot!(twinx(), Vz, dρ, markershape=:diamond, markercolor=:orange, lc=:orange, legend=false)
+    # p = plot!(twinx(), Vz, abs.(mps), markershape=:auto, label=L"MP")
     display(plot(p))
     # params = @strdict sites U
     # save = "ssvarzeeman"*savename(params)
@@ -200,17 +225,23 @@ end
 
 
 function test()
-    sites = 2
-    d = FermionBasis((1:sites), (:↑, :↓))
-    μ = 10
+    sites = 4
+    a = FermionBasis((1:sites), (:↑, :↓))
+    d = FermionBasis((1:sites))
     w = 1.0
     λ = π/4
-    Δind = 10
+    Vz = 1e12w
+    Δind = Vz*cos(λ)
+    μ = Vz*sin(λ)
     Φ = 0w
-    U = 1w
-    Vz = 1e2w
+    U = 0w
+    ϵ = 0
+    t = 1
+    Δ = 1
     params = Dict(:μ=>μ, :w=>w, :λ=>λ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz) 
-    measures(d, localpairingham, params)
+    paramsk = Dict(:ϵ=>ϵ, :t=>t, :Δ=>Δ)
+    println(measures(a, localpairingham, params))
+    println(measures(d, kitaev, paramsk))
 end
 
 end

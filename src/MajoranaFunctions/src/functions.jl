@@ -66,7 +66,7 @@ end
 function kitaev(particle_ops, params::Dict{Symbol, T}) where T
     sites = QuantumDots.nbr_of_fermions(particle_ops)
     newparams = convert_to_namedtuple(params, sites)
-    return localpairingham(particle_ops, newparams)
+    return kitaev(particle_ops, newparams)
 end
 
 function measures(particle_ops, ham_fun, params)
@@ -127,12 +127,12 @@ end
 
 function robustness(particle_ops, oddstate, evenstate, sitelabels)
     dρ = 0
-    # maybe one parameter with indices corrresponding to correct sitelabels also
+    labels = keys(particle_ops.dict)
     sites = length(sitelabels)
     for j in 1:sites
         keeplabels = tuple(sitelabels[j]...)
-        println(setdiff(sitelabels, keeplabels))
-        ρe, ρo = map(ψ -> QuantumDots.reduced_density_matrix(ψ, remove_labels, particle_ops),
+        removelabels = tuple(setdiff(labels, keeplabels)...)
+        ρe, ρo = map(ψ -> QuantumDots.reduced_density_matrix(ψ, removelabels, particle_ops),
                     (evenstate, oddstate))
         dρ += norm(ρe - ρo)^2
     end
@@ -145,4 +145,8 @@ function robustness(particle_ops::FermionBasis{M, S, T, Sym}, oddstate, evenstat
     return robustness(particle_ops, oddstate, evenstate, sitelabels)
 end
 
-robustness(particle_ops::FermionBasis{M, S, T, Sym}, oddstate, evenstate) where {M, S<:Number, T, Sym} = robustness(particle_ops, oddstate, evenstate, keys(particle_ops.dict))
+function robustness(particle_ops::FermionBasis{M, S, T, Sym}, oddstate, evenstate) where {M, S<:Number, T, Sym}
+    sites = QuantumDots.nbr_of_fermions(particle_ops)
+    sitelabels = [(i,) for i in 1:sites]
+    return robustness(particle_ops, oddstate, evenstate, sitelabels)
+end
