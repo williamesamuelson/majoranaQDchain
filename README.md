@@ -1,4 +1,8 @@
-# majoranaQDchain
+# Majorana bound states in chains of interacting quantum dots
+
+Ongoing repository for my master's thesis. Based on the (unpublished) Julia package "QuantumDots".
+
+
 
 This code base is using the [Julia Language](https://julialang.org/) and
 [DrWatson](https://juliadynamics.github.io/DrWatson.jl/stable/)
