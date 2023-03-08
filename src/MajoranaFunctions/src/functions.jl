@@ -69,6 +69,21 @@ function kitaev(particle_ops, params::Dict{Symbol, T}) where T
     return kitaev(particle_ops, newparams)
 end
 
+function groundindices(particle_ops, vecs, energies)
+    parityop = parityoperator(particle_ops)
+    parities = [v'parityop*v for v in vecs]
+    # evenindices = findall(parity -> parity ≈ 1.0, parities)
+    atol = 1e-4
+    evenindices = findall(parity -> isapprox(parity, 1; atol=atol), parities)
+    oddindices = findall(parity -> isapprox(parity, -1; atol=atol), parities)
+    # oddindices = setdiff(1:length(energies), evenindices)
+    if isempty(evenindices) || isempty(oddindices)
+        println(parities)
+        error("no definite parity")
+    end
+    return evenindices[1]::Int, oddindices[1]::Int
+end
+
 function measures(particle_ops, ham_fun, params)
         H = ham_fun(particle_ops, params)
         energies, vecs = eigen!(Matrix(H))
@@ -78,17 +93,6 @@ function measures(particle_ops, ham_fun, params)
         mp = majoranapolarization(particle_ops, vecs[:,odd], vecs[:,even])
         dρ = robustness(particle_ops, vecs[:, odd], vecs[:, even])
         return gap, mp, dρ
-end
-
-function groundindices(particle_ops, vecs, energies)
-    parityop = parityoperator(particle_ops)
-    parities = [v'parityop*v for v in vecs]
-    # evenindices = findall(parity -> parity ≈ 1.0, parities)
-    atol = 1e-4
-    evenindices = findall(parity -> isapprox(parity, 1; atol=atol), parities)
-    oddindices = findall(parity -> isapprox(parity, -1; atol=atol), parities)
-    # oddindices = setdiff(1:length(energies), evenindices)
-    return evenindices[1]::Int, oddindices[1]::Int
 end
 
 function majoranapolarization(plusmajoranas, minusmajoranas, oddstate, evenstate)
