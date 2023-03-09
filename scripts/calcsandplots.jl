@@ -106,8 +106,8 @@ end
 # should make a function for the middle rows
 function optimizesweetspot(particle_ops, params::Dict{Symbol, T}, scansyms::NTuple{M, Symbol}, guess, range, maxtime) where {T,M}
     weights = [1, 1e4, 1e9]
-    for i in 1:length(weights)
-        opt_func = create_sweetspot_optfunc(particle_ops, params, scansyms, weights[i], 1e-7)
+    for w in weights
+        opt_func = create_sweetspot_optfunc(particle_ops, params, scansyms, w, 1e-7)
         res = bboptimize(opt_func, guess, SearchRange=range, TraceMode=:compact,
                          MaxTime=maxtime/length(weights))
         guess = best_candidate(res)
@@ -135,7 +135,7 @@ function twodimscan()
     λ = π/4
     Φ = 0w
     U = 0w
-    Vz = 0.5w
+    Vz = 1000w
     μval, Δindval = μΔind_init(λ, Vz, U)
     dμ = 10w
     dΔind = 10w
@@ -149,7 +149,7 @@ function twodimscan()
     @time gap, mp, dρsq = scan2d(xparams, yparams, fix_params, d, localpairingham, points, sites)
     opt_params = merge(fix_params, Dict(:μ=>0, :Δind=>0))
     range_opt = [(Δind[1], Δind[end]), (μ[1], μ[end])]
-    sweetspot, gapss, dρsqss = optimizesweetspot(d, opt_params, (:Δind, :μ), [Δindval, μval], range_opt, 60)
+    sweetspot, gapss, dρsqss = optimizesweetspot(d, opt_params, (:Δind, :μ), [Δindval, μval], range_opt, 1000)
     initializeplot()
     p = heatmap(Δind, μ, dρsq, c=:acton)
     contourlvl = 0.05
@@ -163,6 +163,7 @@ function twodimscan()
     display(plot(p, xlabel=L"\Delta_{ind}/w", ylabel=L"\mu/w",
                  colorbar_title=L"\delta \rho", title=L"N=%$sites, U=%$U, V_z=%$Vz"))
     println(gapss)
+    println(dρsqss)
     # params = @strdict sites U Vz
     # save = "2dscan"*savename(params)
     # png(plotsdir("2dscans", save))
@@ -194,8 +195,8 @@ function calc()
     Φ = 0w
     λ = π/4
     U = [0, 5].*w
-    Vz = collect(10.0 .^ range(-1, 2, 10))
-    maxtime = 400
+    Vz = collect(10.0 .^ range(-1.5, 3, 10))
+    maxtime = 1000
     simparams = Dict("w"=>w, "λ"=>λ, "Φ"=>Φ, "Vz"=>[Vz], "U"=>U, "sites"=>sites)
     dicts = dict_list(simparams)
     for d in dicts
@@ -206,7 +207,7 @@ function calc()
 end
 
 function plotzeeman()
-	firstsim = readdir(datadir("sims"))[4]
+	firstsim = readdir(datadir("sims"))[6]
     dict = wload(datadir("sims", firstsim))
     gap, dρ, mp, Vz, sites, U, λ = dict["gap"], dict["dρ"], dict["mp"], dict["Vz"],
                                    dict["sites"], dict["U"], dict["λ"]
@@ -223,7 +224,7 @@ function plotzeeman()
     p = plot!(twinx(), Vz, abs.(mp), markershape=:cross, markercolor=:green, lc=:green, legend=false,
              ylabel=L"MP")
     display(plot(p, xscale=:log10))
-    # params = @strdict sites U
+    # params = @strdict sites U λ
     # save = "ssvarzeeman"*savename(params)
     # png(plotsdir("ssvarzeeman", save))
 end

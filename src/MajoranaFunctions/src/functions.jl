@@ -73,7 +73,7 @@ function groundindices(particle_ops, vecs, energies)
     parityop = parityoperator(particle_ops)
     parities = [v'parityop*v for v in vecs]
     # evenindices = findall(parity -> parity ≈ 1.0, parities)
-    atol = 1e-4
+    atol = 1e-3
     evenindices = findall(parity -> isapprox(parity, 1; atol=atol), parities)
     oddindices = findall(parity -> isapprox(parity, -1; atol=atol), parities)
     # oddindices = setdiff(1:length(energies), evenindices)
