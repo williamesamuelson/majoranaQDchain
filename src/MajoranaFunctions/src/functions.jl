@@ -36,7 +36,7 @@ function localpairingham(particle_ops, params::NamedTuple{S, NTuple{7, Vector{Fl
     # add conjugates
     ham += ham'
     ham += sum(ham_dot_sp) + sum(ham_dot_int)
-    return ham
+    return QuantumDots.blockdiagonal(Matrix(ham), d)
 end
 
 function localpairingham(particle_ops, params::Dict{Symbol, T}) where T
@@ -60,7 +60,7 @@ function kitaev(particle_ops, params::NamedTuple{S, NTuple{3, Vector{Float64}}})
     ham = sum(ham_tun) + sum(ham_sc)
     ham += ham'
     ham += sum(ham_dot)
-    return ham
+    return QuantumDots.blockdiagonal(Matrix(ham), d)
 end
 
 function kitaev(particle_ops, params::Dict{Symbol, T}) where T
@@ -69,30 +69,29 @@ function kitaev(particle_ops, params::Dict{Symbol, T}) where T
     return kitaev(particle_ops, newparams)
 end
 
-function groundindices(particle_ops, vecs, energies)
-    parityop = parityoperator(particle_ops)
-    parities = [v'parityop*v for v in vecs]
-    # evenindices = findall(parity -> parity ≈ 1.0, parities)
-    atol = 1e-3
-    evenindices = findall(parity -> isapprox(parity, 1; atol=atol), parities)
-    oddindices = findall(parity -> isapprox(parity, -1; atol=atol), parities)
-    # oddindices = setdiff(1:length(energies), evenindices)
-    if isempty(evenindices) || isempty(oddindices)
-        println(parities)
-        error("no definite parity")
-    end
-    return evenindices[1]::Int, oddindices[1]::Int
+function groundstates(particle_ops, ham_fun, params)
+    H = ham_fun(particle_ops, params)
+    energies, blockvecs = QuantumDots.BlockDiagonals.eigen_blockwise(H)
+    vecs = Matrix(blockvecs)
+    oddind = 1
+    evenind = 2^(QuantumDots.nbr_of_fermions(particle_ops) - 1) + 1
+    return vecs[:, oddind], vecs[:, evenind]
 end
 
 function measures(particle_ops, ham_fun, params)
-        H = ham_fun(particle_ops, params)
-        energies, vecs = eigen!(Matrix(H))
-        even, odd = groundindices(particle_ops, eachcol(vecs), energies)
-        top_gap = energies[3] - energies[1]
-        gap = (energies[even] - energies[odd])/top_gap #normalize to gap
-        mp = majoranapolarization(particle_ops, vecs[:,odd], vecs[:,even])
-        dρ = robustness(particle_ops, vecs[:, odd], vecs[:, even])
-        return gap, mp, dρ
+    H = ham_fun(particle_ops, params)
+    energies, blockvecs = QuantumDots.BlockDiagonals.eigen_blockwise(H)
+    println(real.(round.(energies.-energies[1], sigdigits=2)))
+    vecs = Matrix(blockvecs)
+    oddind = 1
+    evenind = 2^(QuantumDots.nbr_of_fermions(particle_ops) - 1) + 1
+    gap = (energies[evenind] - energies[oddind])
+    sort!(energies)
+    top_gap = energies[3] - energies[1]
+    gap /= top_gap # normalize by top gap
+    mp = majoranapolarization(particle_ops, vecs[:,oddind], vecs[:,evenind])
+    dρ = robustness(particle_ops, vecs[:, oddind], vecs[:, evenind])
+    return gap, mp, dρ
 end
 
 function majoranapolarization(plusmajoranas, minusmajoranas, oddstate, evenstate)
@@ -135,9 +134,12 @@ function robustness(particle_ops, oddstate, evenstate, sitelabels)
     sites = length(sitelabels)
     for j in 1:sites
         keeplabels = tuple(sitelabels[j]...)
-        removelabels = tuple(setdiff(labels, keeplabels)...)
-        ρe, ρo = map(ψ -> QuantumDots.reduced_density_matrix(ψ, removelabels, particle_ops),
+        ρe, ρo = map(ψ -> QuantumDots.reduced_density_matrix(ψ, keeplabels, particle_ops),
                     (evenstate, oddstate))
+        println("Even, site $j")
+        display(round.(real.(ρe), digits=2))
+        println("Odd, site $j")
+        display(round.(real.(ρo), digits=2))
         dρ += norm(ρe - ρo)^2
     end
     return dρ/sites
@@ -146,6 +148,7 @@ end
 function robustness(particle_ops::FermionBasis{M, S, T, Sym}, oddstate, evenstate) where {M, S<:Tuple, T, Sym}
     sites = QuantumDots.nbr_of_fermions(particle_ops) ÷ 2
     sitelabels = [tuple(((i, σ) for σ in (:↑, :↓))...) for i in 1:sites]
+    # use cell in QuantumDots
     return robustness(particle_ops, oddstate, evenstate, sitelabels)
 end
 

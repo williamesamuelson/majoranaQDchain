@@ -128,14 +128,14 @@ function initializeplot()
 end
 
 function twodimscan()
-    sites = 3
-    d = FermionBasis((1:sites), (:↑, :↓))
-    points = 30
+    sites = 2
+    d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
+    points = 50
     w = 1.0
     λ = π/4
     Φ = 0w
     U = 0w
-    Vz = 1000w
+    Vz = 100w
     μval, Δindval = μΔind_init(λ, Vz, U)
     dμ = 10w
     dΔind = 10w
@@ -146,24 +146,24 @@ function twodimscan()
     xparams = Dict(:Δind=>Δind)
     yparams = Dict(:μ=>μ)
     fix_params = Dict(:w=>w, :λ=>λ, :Φ=>Φ, :U=>U, :Vz=>Vz) 
-    @time gap, mp, dρsq = scan2d(xparams, yparams, fix_params, d, localpairingham, points, sites)
-    opt_params = merge(fix_params, Dict(:μ=>0, :Δind=>0))
-    range_opt = [(Δind[1], Δind[end]), (μ[1], μ[end])]
-    sweetspot, gapss, dρsqss = optimizesweetspot(d, opt_params, (:Δind, :μ), [Δindval, μval], range_opt, 1000)
+    @time gap, mp, dρ = scan2d(xparams, yparams, fix_params, d, localpairingham, points, sites)
+    # opt_params = merge(fix_params, Dict(:μ=>0, :Δind=>0))
+    # range_opt = [(Δind[1], Δind[end]), (μ[1], μ[end])]
+    # sweetspot, gapss, dρsqss = optimizesweetspot(d, opt_params, (:Δind, :μ), [Δindval, μval], range_opt, 1000)
     initializeplot()
-    p = heatmap(Δind, μ, dρsq, c=:acton)
+    p = heatmap(Δind, μ, dρ, c=:acton)
     contourlvl = 0.05
     lvls = [[-contourlvl], [0.0], [contourlvl]]
     clrs = [:green4, :lightgreen, :green4]
     for i in 1:length(lvls)
         contour!(p, Δind, μ, gap, levels=lvls[i], c=clrs[i], colorbar_entry=false)
     end
-    scatter!(p, [sweetspot[1]], [sweetspot[2]], c=:cyan, legend=false)
+    # scatter!(p, [sweetspot[1]], [sweetspot[2]], c=:cyan, legend=false)
     scatter!(p, [Δindval], [μval], c=:red, legend=false)
     display(plot(p, xlabel=L"\Delta_{ind}/w", ylabel=L"\mu/w",
                  colorbar_title=L"\delta \rho", title=L"N=%$sites, U=%$U, V_z=%$Vz"))
-    println(gapss)
-    println(dρsqss)
+    # println(gapss)
+    # println(dρsqss)
     # params = @strdict sites U Vz
     # save = "2dscan"*savename(params)
     # png(plotsdir("2dscans", save))
@@ -207,7 +207,7 @@ function calc()
 end
 
 function plotzeeman()
-	firstsim = readdir(datadir("sims"))[6]
+	firstsim = readdir(datadir("sims"))[1]
     dict = wload(datadir("sims", firstsim))
     gap, dρ, mp, Vz, sites, U, λ = dict["gap"], dict["dρ"], dict["mp"], dict["Vz"],
                                    dict["sites"], dict["U"], dict["λ"]
@@ -231,12 +231,12 @@ end
 
 
 function test()
-    sites = 4
-    a = FermionBasis((1:sites), (:↑, :↓))
-    d = FermionBasis((1:sites))
+    sites = 3
+    c = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
+    d = FermionBasis((1:sites), qn=QuantumDots.parity)
     w = 1.0
-    λ = π/4
-    Vz = 1e12w
+    λ = π/3
+    Vz = 1e4w
     Δind = Vz*cos(λ)
     μ = Vz*sin(λ)
     Φ = 0w
@@ -246,8 +246,16 @@ function test()
     Δ = 1
     params = Dict(:μ=>μ, :w=>w, :λ=>λ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz) 
     paramsk = Dict(:ϵ=>ϵ, :t=>t, :Δ=>Δ)
-    println(measures(a, localpairingham, params))
-    println(measures(d, kitaev, paramsk))
+    odd, even = MajoranaFunctions.groundstates(c, localpairingham, params)
+    a = (√(Vz - μ)*c[1,:↑]' - √(Vz + μ)*c[1,:↓])/√(2Vz)
+    b = (√(Vz - μ)*c[1,:↓]' + √(Vz + μ)*c[1,:↑])/√(2Vz)
+    pairing = Δind*(c[1,:↑]'c[1,:↓]' + c[1,:↓]c[1,:↑])
+    println(odd'*pairing*odd - even'*pairing*even)
+    # println("My model:")
+    # println(measures(c, localpairingham, params))
+    # println("2t=$(round(sin(λ), digits=2))")
+    # println("Kitaev:")
+    # println(measures(d, kitaev, paramsk))
 end
 
 end
