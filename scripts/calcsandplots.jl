@@ -1,8 +1,7 @@
 module Calc
 using DrWatson
 @quickactivate "majoranaQDchain"
-using QuantumDots
-using LinearAlgebra
+#using LinearAlgebra
 using Plots
 using MajoranaFunctions
 using LaTeXStrings
@@ -10,46 +9,41 @@ using Roots
 using BlackBoxOptim
 using NLsolve
 
-function scan1d(scan_params, fix_params, particle_ops, ham_fun, points, sites)
-    d = particle_ops
-    gaps = zeros(Float64, points)
-    mps = zeros(Float64, points)
-    dρs = zeros(Float64, points)
-    params = merge(scan_params, fix_params)
-    for i = 1:points
-        for (p, val) in scan_params
-            params[p] = val[i]
-        end
-        gaps[i], mps[i], dρs[i] = measures(d, ham_fun, params)
-    end
-    return gaps, mps, dρs
-end
+# function scan1d(scan_params, fix_params, particle_ops, ham_fun, points, sites)
+#     d = particle_ops
+#     gaps = zeros(Float64, points)
+#     mps = zeros(Float64, points)
+#     dρs = zeros(Float64, points)
+#     params = merge(scan_params, fix_params)
+#     for i = 1:points
+#         for (p, val) in scan_params
+#             params[p] = val[i]
+#         end
+#         gaps[i], mps[i], dρs[i] = measures(d, ham_fun, params)
+#     end
+#     return gaps, mps, dρs
+# end
+# 
+# function scan2d(xparams, yparams, fix_params, particle_ops, ham_fun, points, sites)
+#     d = particle_ops
+#     gaps = zeros(Float64, points, points)
+#     mps = zeros(Float64, points, points)
+#     dρs = zeros(Float64, points, points)
+#     params = merge(xparams, yparams, fix_params)
+#     for i = 1:points
+#         for (p, val) in yparams
+#             params[p] = val[i]
+#         end
+#         for j = 1:points
+#             for (p, val) in xparams
+#                 params[p] = val[j]
+#             end
+#             gaps[i, j], mps[i, j], dρs[i, j] = measures(d, ham_fun, params)
+#         end
+#     end
+#     return gaps, mps, dρs
+# end
 
-function scan2d(xparams, yparams, fix_params, particle_ops, ham_fun, points, sites)
-    d = particle_ops
-    gaps = zeros(Float64, points, points)
-    mps = zeros(Float64, points, points)
-    dρs = zeros(Float64, points, points)
-    params = merge(xparams, yparams, fix_params)
-    for i = 1:points
-        for (p, val) in yparams
-            params[p] = val[i]
-        end
-        for j = 1:points
-            for (p, val) in xparams
-                params[p] = val[j]
-            end
-            gaps[i, j], mps[i, j], dρs[i, j] = measures(d, ham_fun, params)
-        end
-    end
-    return gaps, mps, dρs
-end
-
-function kitaevtoakhmerovparams(t, Δ, α) 
-    λ = atan.(Δ*tan(2α)/t)
-    w = t./(cos.(λ)*sin(2α))
-    return w, λ
-end
 
 function zeroenergy_condition(μ, Δind, Vz, U)
     β = √(μ^2+Δind^2)
@@ -129,7 +123,7 @@ end
 
 function twodimscan()
     sites = 2
-    d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
+    d = FermionBasis((1:sites), (:↑, :↓), qn=MajoranaFunctions.QuantumDots.parity)
     points = 50
     w = 1.0
     λ = π/4
@@ -172,7 +166,7 @@ end
 
 function sweetspotzeeman(simparams, maxtime)
     @unpack w, λ, Φ, Vz, U, sites = simparams
-    d = FermionBasis((1:sites), (:↑, :↓))
+    d = FermionBasis((1:sites), (:↑, :↓), qn=MajoranaFunctions.QuantumDots.parity)
     points = length(Vz)
     gaps = zeros(Float64, points)
     dρs = zeros(Float64, points)
@@ -231,11 +225,11 @@ end
 
 
 function test()
-    sites = 3
-    c = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
-    d = FermionBasis((1:sites), qn=QuantumDots.parity)
+    sites = 2
+    c = FermionBasis((1:sites), (:↑, :↓), qn=MajoranaFunctions.QuantumDots.parity)
+    d = FermionBasis((1:sites), qn=MajoranaFunctions.QuantumDots.parity)
     w = 1.0
-    λ = π/3
+    λ = π/4
     Vz = 1e4w
     Δind = Vz*cos(λ)
     μ = Vz*sin(λ)
@@ -246,16 +240,42 @@ function test()
     Δ = 1
     params = Dict(:μ=>μ, :w=>w, :λ=>λ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz) 
     paramsk = Dict(:ϵ=>ϵ, :t=>t, :Δ=>Δ)
-    odd, even = MajoranaFunctions.groundstates(c, localpairingham, params)
+    energies, vecs, oddind, evenind = MajoranaFunctions.handleblocks(c, localpairingham, params)
+    odd, even = vecs[:, oddind], vecs[:, evenind]
     a = (√(Vz - μ)*c[1,:↑]' - √(Vz + μ)*c[1,:↓])/√(2Vz)
     b = (√(Vz - μ)*c[1,:↓]' + √(Vz + μ)*c[1,:↑])/√(2Vz)
     pairing = Δind*(c[1,:↑]'c[1,:↓]' + c[1,:↓]c[1,:↑])
-    println(odd'*pairing*odd - even'*pairing*even)
-    # println("My model:")
-    # println(measures(c, localpairingham, params))
-    # println("2t=$(round(sin(λ), digits=2))")
-    # println("Kitaev:")
-    # println(measures(d, kitaev, paramsk))
+    op = c[1,:↑]'c[1,:↓]
+    println(odd'*op*odd - even'*op*even)
+    println("My model:")
+    println(measures(c, localpairingham, params, sites))
+    println("2t=$(round(sin(λ), digits=2))")
+    println("Kitaev:")
+    println(measures(d, kitaev, paramsk, sites))
+end
+
+function kitaevlimit()
+    sites = 3
+    d = MajoranaFunctions.FermionBasis((1:sites), (:↑, :↓), qn=MajoranaFunctions.QuantumDots.parity)
+    c = MajoranaFunctions.FermionBasis((1:sites), qn=MajoranaFunctions.QuantumDots.parity)
+    t = 1.0 # Kitaev t
+    ϵ = 0
+    points = 100
+    Δ = collect(range(-2t, 2t, points)) # Kitaev Δ
+    α = π/5
+    w, λ = MajoranaFunctions.kitaevtoakhmerovparams(t, Δ, α)
+    Vz = 1e6t
+    Δind = Vz*cos(2α)
+    μ = Vz*sin(2α)
+    Φ = 0w
+    U = 0w
+    scan_params = Dict(:λ=>λ, :w=>w)
+    scan_paramsk = Dict(:Δ=>Δ)
+    fix_params = Dict(:μ=>μ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz) 
+    fix_paramsk = Dict(:ϵ=>ϵ, :t=>t)
+    gap, mp, dρ = scan1d(scan_params, fix_params, d, localpairingham, points, sites)
+    gapk, mpk, dρk = scan1d(scan_paramsk, fix_paramsk, c, kitaev, points, sites)
+    display(plot(Δ, [gap, gapk]))
 end
 
 end

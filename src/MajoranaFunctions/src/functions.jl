@@ -69,91 +69,93 @@ function kitaev(particle_ops, params::Dict{Symbol, T}) where T
     return kitaev(particle_ops, newparams)
 end
 
-function groundstates(particle_ops, ham_fun, params)
-    H = ham_fun(particle_ops, params)
-    energies, blockvecs = QuantumDots.BlockDiagonals.eigen_blockwise(H)
-    vecs = Matrix(blockvecs)
-    oddind = 1
-    evenind = 2^(QuantumDots.nbr_of_fermions(particle_ops) - 1) + 1
-    return vecs[:, oddind], vecs[:, evenind]
+function kitaevtoakhmerovparams(t, Δ, α) 
+    λ = atan.(Δ*tan(2α)/t)
+    w = t./(cos.(λ)*sin(2α))
+    return w, λ
 end
 
-function measures(particle_ops, ham_fun, params)
+function handleblocks(particle_ops, ham_fun, params)
     H = ham_fun(particle_ops, params)
     energies, blockvecs = QuantumDots.BlockDiagonals.eigen_blockwise(H)
-    println(real.(round.(energies.-energies[1], sigdigits=2)))
     vecs = Matrix(blockvecs)
     oddind = 1
     evenind = 2^(QuantumDots.nbr_of_fermions(particle_ops) - 1) + 1
+    return energies, vecs, oddind, evenind
+end
+
+function measures(particle_ops, ham_fun, params, sites)
+    energies, vecs, oddind, evenind = handleblocks(particle_ops, ham_fun, params)
     gap = (energies[evenind] - energies[oddind])
     sort!(energies)
     top_gap = energies[3] - energies[1]
-    gap /= top_gap # normalize by top gap
-    mp = majoranapolarization(particle_ops, vecs[:,oddind], vecs[:,evenind])
-    dρ = robustness(particle_ops, vecs[:, oddind], vecs[:, evenind])
+    gap /= top_gap # normalize by topological gap
+    mp = majoranapolarization(particle_ops, vecs[:,oddind], vecs[:,evenind], sites)
+    dρ = robustness(particle_ops, vecs[:, oddind], vecs[:, evenind], sites)
     return gap, mp, dρ
 end
 
-function majoranapolarization(plusmajoranas, minusmajoranas, oddstate, evenstate)
-    plus_matrixelements = (oddstate'*majplus*evenstate for majplus in plusmajoranas)
-    minus_matrixelements = (oddstate'*majminus*evenstate for majminus in minusmajoranas)
-    aplus = real.(plus_matrixelements)
-    aminus = real.(minus_matrixelements)
-    bplus = -imag.(plus_matrixelements)
-    bminus = -imag.(minus_matrixelements)
-    return sum(aplus.^2 .+ aminus.^2 .- bplus.^2 .- bminus.^2)
+function majoranapolarization(particle_ops, oddstate, evenstate, sites)
+    n = sites÷2 + sites%2  # sum over half of the sites plus middle if odd
+    mp = 0
+    for j in 1:n
+        plus_coeffs = (dot(oddstate, f'+f, evenstate) for f in QuantumDots.cell(j, particle_ops))
+        minus_coeffs = (dot(oddstate, 1im*(f'-f), evenstate) for f in QuantumDots.cell(j, particle_ops))
+        aplus = real.(plus_coeffs)
+        aminus = real.(minus_coeffs)
+        bplus = -imag.(plus_coeffs)
+        bminus = -imag.(minus_coeffs)
+        mp += sum(aplus.^2 + aminus.^2 - bplus.^2 - bminus.^2)
+    end
+    return mp
 end
 
-function majoranapolarization(particle_ops::FermionBasis{M, S, T, Sym}, oddstate, evenstate) where {M, S<:Tuple, T, Sym}
-    d = particle_ops
-    sites = QuantumDots.nbr_of_fermions(d) ÷ 2
-    n = sites÷2 + sites % 2  # sum over half of the sites plus middle if odd
-    plusmajoranas = (d[j, σ]' + d[j, σ] for j in 1:n, σ in (:↑, :↓))
-    minusmajoranas = (1im*(d[j, σ]' - d[j, σ]) for j in 1:n, σ in (:↑, :↓))
-    return majoranapolarization(plusmajoranas, minusmajoranas, oddstate, evenstate)
-end
-
-function majoranapolarization(particle_ops::FermionBasis{M, S, T, Sym}, oddstate, evenstate) where {M, S<:Number, T, Sym}
-    d = particle_ops
-    sites = QuantumDots.nbr_of_fermions(d)
-    n = sites÷2 + sites % 2  # sum over half of the sites plus middle if odd
-    plusmajoranas = (d[j]' + d[j] for j in 1:n)
-    minusmajoranas = (1im*(d[j]' - d[j]) for j in 1:n)
-    return majoranapolarization(plusmajoranas, minusmajoranas, oddstate, evenstate)
-end
-
-function majoranapolarization(particle_ops, ham)
-    energies, vecs = eigen!(Matrix(ham))
-    even, odd = groundindices(particle_ops, eachcol(vecs), energies)
-    return majoranapolarization(particle_ops, vecs[:, odd], vecs[:, even])
-end
-
-function robustness(particle_ops, oddstate, evenstate, sitelabels)
+function robustness(particle_ops, oddstate, evenstate, sites)
     dρ = 0
-    labels = keys(particle_ops.dict)
-    sites = length(sitelabels)
     for j in 1:sites
-        keeplabels = tuple(sitelabels[j]...)
+        keeplabels = tuple(keys(QuantumDots.cell(j, particle_ops))...)
         ρe, ρo = map(ψ -> QuantumDots.reduced_density_matrix(ψ, keeplabels, particle_ops),
                     (evenstate, oddstate))
-        println("Even, site $j")
-        display(round.(real.(ρe), digits=2))
-        println("Odd, site $j")
-        display(round.(real.(ρo), digits=2))
+        # println("Even, site $j")
+        # display(round.(real.(ρe), digits=2))
+        # println("Odd, site $j")
+        # display(round.(real.(ρo), digits=2))
         dρ += norm(ρe - ρo)^2
     end
     return dρ/sites
 end
 
-function robustness(particle_ops::FermionBasis{M, S, T, Sym}, oddstate, evenstate) where {M, S<:Tuple, T, Sym}
-    sites = QuantumDots.nbr_of_fermions(particle_ops) ÷ 2
-    sitelabels = [tuple(((i, σ) for σ in (:↑, :↓))...) for i in 1:sites]
-    # use cell in QuantumDots
-    return robustness(particle_ops, oddstate, evenstate, sitelabels)
+function scan1d(scan_params, fix_params, particle_ops, ham_fun, points, sites)
+    d = particle_ops
+    gaps = zeros(Float64, points)
+    mps = zeros(Float64, points)
+    dρs = zeros(Float64, points)
+    params = merge(scan_params, fix_params)
+    for i = 1:points
+        for (p, val) in scan_params
+            params[p] = val[i]
+        end
+        gaps[i], mps[i], dρs[i] = measures(d, ham_fun, params, sites)
+    end
+    return gaps, mps, dρs
 end
 
-function robustness(particle_ops::FermionBasis{M, S, T, Sym}, oddstate, evenstate) where {M, S<:Number, T, Sym}
-    sites = QuantumDots.nbr_of_fermions(particle_ops)
-    sitelabels = [(i,) for i in 1:sites]
-    return robustness(particle_ops, oddstate, evenstate, sitelabels)
+function scan2d(xparams, yparams, fix_params, particle_ops, ham_fun, points, sites)
+    d = particle_ops
+    gaps = zeros(Float64, points, points)
+    mps = zeros(Float64, points, points)
+    dρs = zeros(Float64, points, points)
+    params = merge(xparams, yparams, fix_params)
+    for i = 1:points
+        for (p, val) in yparams
+            params[p] = val[i]
+        end
+        for j = 1:points
+            for (p, val) in xparams
+                params[p] = val[j]
+            end
+            gaps[i, j], mps[i, j], dρs[i, j] = measures(d, ham_fun, params, sites)
+        end
+    end
+    return gaps, mps, dρs
 end
