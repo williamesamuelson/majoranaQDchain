@@ -1,90 +1,12 @@
 module Calc
 using DrWatson
 @quickactivate "majoranaQDchain"
-#using LinearAlgebra
+using QuantumDots
+using LinearAlgebra
 using Plots
 using MajoranaFunctions
 using LaTeXStrings
-using Roots
 using BlackBoxOptim
-using NLsolve
-
-# function scan1d(scan_params, fix_params, particle_ops, ham_fun, points, sites)
-#     d = particle_ops
-#     gaps = zeros(Float64, points)
-#     mps = zeros(Float64, points)
-#     dρs = zeros(Float64, points)
-#     params = merge(scan_params, fix_params)
-#     for i = 1:points
-#         for (p, val) in scan_params
-#             params[p] = val[i]
-#         end
-#         gaps[i], mps[i], dρs[i] = measures(d, ham_fun, params)
-#     end
-#     return gaps, mps, dρs
-# end
-# 
-# function scan2d(xparams, yparams, fix_params, particle_ops, ham_fun, points, sites)
-#     d = particle_ops
-#     gaps = zeros(Float64, points, points)
-#     mps = zeros(Float64, points, points)
-#     dρs = zeros(Float64, points, points)
-#     params = merge(xparams, yparams, fix_params)
-#     for i = 1:points
-#         for (p, val) in yparams
-#             params[p] = val[i]
-#         end
-#         for j = 1:points
-#             for (p, val) in xparams
-#                 params[p] = val[j]
-#             end
-#             gaps[i, j], mps[i, j], dρs[i, j] = measures(d, ham_fun, params)
-#         end
-#     end
-#     return gaps, mps, dρs
-# end
-
-
-function zeroenergy_condition(μ, Δind, Vz, U)
-    β = √(μ^2+Δind^2)
-    return -Vz + β - U/2*(1 - μ/β)
-end
-
-function μguess(Δind, Vz, U)
-    f(μ) = zeroenergy_condition(μ, Δind, Vz, U)
-    μinit = √(Vz^2-Δind^2)
-    return find_zero(f, μinit)
-end
-
-#Now I choose the t=-Δ solution (?)
-function get_sweetspot_nlsolvefunc(λ, Vz, U)
-    function f!(F, x)
-        μ = x[1]
-        Δind = x[2]
-        β = √(μ^2 + Δind^2)
-        F[1] = μ*cos(λ) - Δind*sin(λ)
-        F[2] = zeroenergy_condition(μ, Δind, Vz, U)
-    end
-end
-
-function get_sweetspot_nlsolvejac(λ, Vz, U)
-    function j!(J, x)
-        μ = x[1]
-        Δind = x[2]
-        β = √(μ^2 + Δind^2)
-        J[1, 1] = cos(λ)
-        J[1, 2] = -sin(λ)
-        J[2, 1] = 1/β * (μ + U*Δind^2/(2*β^2))
-        J[2, 2] = Δind/β * (1 - U*μ/(2*β^2))
-    end
-end
-
-function μΔind_init(λ, Vz, U)
-    f = get_sweetspot_nlsolvefunc(λ, Vz, U)
-    J = get_sweetspot_nlsolvejac(λ, Vz, U)
-    sol = nlsolve(f, J, [Vz*sin(λ); Vz*cos(λ)], show_trace=true)
-    return sol.zero
-end
 
 function create_sweetspot_optfunc(particle_ops, params, scansyms, weight, ϵ)
     function sweetspotfunc(x)
@@ -97,7 +19,6 @@ function create_sweetspot_optfunc(particle_ops, params, scansyms, weight, ϵ)
     return sweetspotfunc
 end
 
-# should make a function for the middle rows
 function optimizesweetspot(particle_ops, params::Dict{Symbol, T}, scansyms::NTuple{M, Symbol}, guess, range, maxtime) where {T,M}
     weights = [1, 1e4, 1e9]
     for w in weights
@@ -123,14 +44,14 @@ end
 
 function twodimscan()
     sites = 2
-    d = FermionBasis((1:sites), (:↑, :↓), qn=MajoranaFunctions.QuantumDots.parity)
+    d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
     points = 50
     w = 1.0
     λ = π/4
     Φ = 0w
     U = 0w
     Vz = 100w
-    μval, Δindval = μΔind_init(λ, Vz, U)
+    μval, Δindval = MajoranaFunctions.μΔind_init(λ, Vz, U)
     dμ = 10w
     dΔind = 10w
     # μ = collect(range(0.1, 1.2Vz, points))
@@ -166,14 +87,14 @@ end
 
 function sweetspotzeeman(simparams, maxtime)
     @unpack w, λ, Φ, Vz, U, sites = simparams
-    d = FermionBasis((1:sites), (:↑, :↓), qn=MajoranaFunctions.QuantumDots.parity)
+    d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
     points = length(Vz)
     gaps = zeros(Float64, points)
     dρs = zeros(Float64, points)
     mps = zeros(Float64, points)
     for j in 1:points
-        init = μΔind_init(λ, Vz[j], U)
-        params = Dict(:μ=>init[2], :w=>w, :λ=>λ, :Δind=>init[1], :Φ=>Φ, :U=>U, :Vz=>Vz[j])
+        μ, Δind = MajoranaFunctions.μΔind_init(λ, Vz[j], U)
+        params = Dict(:μ=>μ, :w=>w, :λ=>λ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz[j])
         diffs = (10w, 10w)
         range = [(init[i] - diffs[i], init[i] + diffs[i]) for i in 1:2]
         _, gaps[j], dρs[j], mps[j] = optimizesweetspot(d, params, (:Δind, :μ), init, range, maxtime)
@@ -223,59 +144,42 @@ function plotzeeman()
     # png(plotsdir("ssvarzeeman", save))
 end
 
+beta(μ, Δind) = √(μ^2 + Δind^2)
+
+function bdgparticles(particle_ops, site, μ, Δind)
+    c = particle_ops
+    β = beta(μ, Δind)
+    a = (√(β - μ)*c[site,:↑]' - √(β + μ)*c[site,:↓])/√(2β)
+    b = (√(β - μ)*c[site,:↓]' + √(β + μ)*c[site,:↑])/√(2β)
+    return a,b
+end
 
 function test()
-    sites = 2
-    c = FermionBasis((1:sites), (:↑, :↓), qn=MajoranaFunctions.QuantumDots.parity)
-    d = FermionBasis((1:sites), qn=MajoranaFunctions.QuantumDots.parity)
-    w = 1.0
+    sites = 4
+    d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
+	c = FermionBasis(1:sites, qn=QuantumDots.parity)
+    ϵ = 0
+    t = Δ = 1
+    paramsk = Dict(:ϵ=>ϵ, :t=>t, :Δ=>Δ)
     λ = π/4
+    w = t/(cos(λ)*sin(λ))
     Vz = 1e4w
     Δind = Vz*cos(λ)
     μ = Vz*sin(λ)
     Φ = 0w
     U = 0w
-    ϵ = 0
-    t = 1
-    Δ = 1
     params = Dict(:μ=>μ, :w=>w, :λ=>λ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz) 
-    paramsk = Dict(:ϵ=>ϵ, :t=>t, :Δ=>Δ)
-    energies, vecs, oddind, evenind = MajoranaFunctions.handleblocks(c, localpairingham, params)
-    odd, even = vecs[:, oddind], vecs[:, evenind]
-    a = (√(Vz - μ)*c[1,:↑]' - √(Vz + μ)*c[1,:↓])/√(2Vz)
-    b = (√(Vz - μ)*c[1,:↓]' + √(Vz + μ)*c[1,:↑])/√(2Vz)
-    pairing = Δind*(c[1,:↑]'c[1,:↓]' + c[1,:↓]c[1,:↑])
-    op = c[1,:↑]'c[1,:↓]
-    println(odd'*op*odd - even'*op*even)
-    println("My model:")
-    println(measures(c, localpairingham, params, sites))
-    println("2t=$(round(sin(λ), digits=2))")
-    println("Kitaev:")
-    println(measures(d, kitaev, paramsk, sites))
-end
+    odd, even = MajoranaFunctions.groundstates(d, localpairingham, params)
+    oddk, evenk = MajoranaFunctions.groundstates(c, kitaev, paramsk)
+    aleft, _ = bdgparticles(d, 1, μ, Δind)
+    aright, _ = bdgparticles(d, sites, μ, Δind)
+    γ = aleft' + aleft
 
-function kitaevlimit()
-    sites = 3
-    d = MajoranaFunctions.FermionBasis((1:sites), (:↑, :↓), qn=MajoranaFunctions.QuantumDots.parity)
-    c = MajoranaFunctions.FermionBasis((1:sites), qn=MajoranaFunctions.QuantumDots.parity)
-    t = 1.0 # Kitaev t
-    ϵ = 0
-    points = 100
-    Δ = collect(range(-2t, 2t, points)) # Kitaev Δ
-    α = π/5
-    w, λ = MajoranaFunctions.kitaevtoakhmerovparams(t, Δ, α)
-    Vz = 1e6t
-    Δind = Vz*cos(2α)
-    μ = Vz*sin(2α)
-    Φ = 0w
-    U = 0w
-    scan_params = Dict(:λ=>λ, :w=>w)
-    scan_paramsk = Dict(:Δ=>Δ)
-    fix_params = Dict(:μ=>μ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz) 
-    fix_paramsk = Dict(:ϵ=>ϵ, :t=>t)
-    gap, mp, dρ = scan1d(scan_params, fix_params, d, localpairingham, points, sites)
-    gapk, mpk, dρk = scan1d(scan_paramsk, fix_paramsk, c, kitaev, points, sites)
-    display(plot(Δ, [gap, gapk]))
+    γplus, γminus = MajoranaFunctions.constructmajoranas(d, odd, even, sites)
+    γplusk, γminusk = MajoranaFunctions.constructmajoranas(c, oddk, evenk, sites)
+    f = 1/2*(γplus + 1im*γminus)
+    fk = 1/2*(γplusk + 1im*γminusk)
+    println("Kitaev ", norm(fk'*oddk - evenk))
+    println("Mine ", norm(f'*odd - even))
 end
-
 end

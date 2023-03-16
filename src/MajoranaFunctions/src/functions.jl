@@ -84,6 +84,11 @@ function handleblocks(particle_ops, ham_fun, params)
     return energies, vecs, oddind, evenind
 end
 
+function groundstates(particle_ops, ham_fun, params)
+    _, vecs, oddind, evenind = handleblocks(particle_ops, ham_fun, params)
+    return vecs[:, oddind], vecs[:, evenind]
+end
+
 function measures(particle_ops, ham_fun, params, sites)
     energies, vecs, oddind, evenind = handleblocks(particle_ops, ham_fun, params)
     gap = (energies[evenind] - energies[oddind])
@@ -95,16 +100,37 @@ function measures(particle_ops, ham_fun, params, sites)
     return gap, mp, dρ
 end
 
+function majoranacoeffs(particle_ops, oddstate, evenstate, site)
+    plus_matrixelements = (dot(oddstate, f'+f, evenstate) for f in QuantumDots.cell(site, particle_ops))
+    minus_matrixelements = (dot(oddstate, 1im*(f'-f), evenstate) for f in QuantumDots.cell(site, particle_ops))
+    aplus = real.(plus_matrixelements)
+    aminus = real.(minus_matrixelements)
+    bplus = -imag.(plus_matrixelements)
+    bminus = -imag.(minus_matrixelements)
+    return aplus, aminus, bplus, bminus
+end
+
+function constructmajoranas(particle_ops, oddstate, evenstate, sites)
+    γplus = 0*first(particle_ops.dict)
+    γminus = copy(γplus)
+    for j in 1:sites
+        aplus, aminus, bplus, bminus = majoranacoeffs(particle_ops, oddstate, evenstate, j)
+        ops = QuantumDots.cell(j, particle_ops)
+        for (k, op) in enumerate(ops)
+            γjk_plus = op' + op
+            γjk_minus = 1im*(op'-op)
+            γplus += aplus[k]*γjk_plus + aminus[k]*γjk_minus
+            γminus += bplus[k]*γjk_plus + bminus[k]*γjk_minus
+        end
+    end
+    return γplus, γminus
+end
+
 function majoranapolarization(particle_ops, oddstate, evenstate, sites)
     n = sites÷2 + sites%2  # sum over half of the sites plus middle if odd
     mp = 0
     for j in 1:n
-        plus_coeffs = (dot(oddstate, f'+f, evenstate) for f in QuantumDots.cell(j, particle_ops))
-        minus_coeffs = (dot(oddstate, 1im*(f'-f), evenstate) for f in QuantumDots.cell(j, particle_ops))
-        aplus = real.(plus_coeffs)
-        aminus = real.(minus_coeffs)
-        bplus = -imag.(plus_coeffs)
-        bminus = -imag.(minus_coeffs)
+        aplus, aminus, bplus, bminus = majoranacoeffs(particle_ops, oddstate, evenstate, j)
         mp += sum(aplus.^2 + aminus.^2 - bplus.^2 - bminus.^2)
     end
     return mp
