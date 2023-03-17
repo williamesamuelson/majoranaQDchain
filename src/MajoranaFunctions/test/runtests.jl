@@ -64,8 +64,8 @@ end
     params = Dict(:μ=>μ, :w=>w, :λ=>λ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz) 
     odd, even = MajoranaFunctions.groundstates(d, localpairingham, params)
     oddk, evenk = MajoranaFunctions.groundstates(c, kitaev, paramsk)
-    γplus, γminus = MajoranaFunctions.constructmajoranas(d, odd, even, sites)
-    γplusk, γminusk = MajoranaFunctions.constructmajoranas(c, oddk, evenk, sites)
+    γplus, γminus = MajoranaFunctions.constructmajoranas(d, odd, even)
+    γplusk, γminusk = MajoranaFunctions.constructmajoranas(c, oddk, evenk)
     f = 1/2*(γplus + 1im*γminus)
     fk = 1/2*(γplusk + 1im*γminusk)
     @test fk'*oddk ≈ evenk

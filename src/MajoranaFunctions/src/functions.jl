@@ -100,28 +100,26 @@ function measures(particle_ops, ham_fun, params, sites)
     return gap, mp, dρ
 end
 
-function majoranacoeffs(particle_ops, oddstate, evenstate, site)
-    plus_matrixelements = (dot(oddstate, f'+f, evenstate) for f in QuantumDots.cell(site, particle_ops))
-    minus_matrixelements = (dot(oddstate, 1im*(f'-f), evenstate) for f in QuantumDots.cell(site, particle_ops))
-    aplus = real.(plus_matrixelements)
-    aminus = real.(minus_matrixelements)
-    bplus = -imag.(plus_matrixelements)
-    bminus = -imag.(minus_matrixelements)
+function majoranacoeffs(particle, oddstate, evenstate)
+    d = particle
+    plus_matrixelement = dot(oddstate, d'+d, evenstate)
+    minus_matrixelement = dot(oddstate, 1im*(d'-d), evenstate)
+    aplus = real(plus_matrixelement)
+    aminus = real(minus_matrixelement)
+    bplus = -imag(plus_matrixelement)
+    bminus = -imag(minus_matrixelement)
     return aplus, aminus, bplus, bminus
 end
 
-function constructmajoranas(particle_ops, oddstate, evenstate, sites)
+function constructmajoranas(particle_ops, oddstate, evenstate)
     γplus = 0*first(particle_ops.dict)
     γminus = copy(γplus)
-    for j in 1:sites
-        aplus, aminus, bplus, bminus = majoranacoeffs(particle_ops, oddstate, evenstate, j)
-        ops = QuantumDots.cell(j, particle_ops)
-        for (k, op) in enumerate(ops)
-            γjk_plus = op' + op
-            γjk_minus = 1im*(op'-op)
-            γplus += aplus[k]*γjk_plus + aminus[k]*γjk_minus
-            γminus += bplus[k]*γjk_plus + bminus[k]*γjk_minus
-        end
+    for (label, op) in pairs(particle_ops.dict)
+        γjk_plus = op' + op
+        γjk_minus = 1im*(op'-op)
+        aplus, aminus, bplus, bminus = majoranacoeffs(particle_ops[label], oddstate, evenstate)
+        γplus += aplus*γjk_plus + aminus*γjk_minus
+        γminus += bplus*γjk_plus + bminus*γjk_minus
     end
     return γplus, γminus
 end
@@ -129,9 +127,12 @@ end
 function majoranapolarization(particle_ops, oddstate, evenstate, sites)
     n = sites÷2 + sites%2  # sum over half of the sites plus middle if odd
     mp = 0
-    for j in 1:n
-        aplus, aminus, bplus, bminus = majoranacoeffs(particle_ops, oddstate, evenstate, j)
-        mp += sum(aplus.^2 + aminus.^2 - bplus.^2 - bminus.^2)
+    for (label, op) in pairs(particle_ops.dict)
+        if first(label) > n
+            continue
+        end
+        aplus, aminus, bplus, bminus = majoranacoeffs(particle_ops[label], oddstate, evenstate)
+        mp += aplus^2 + aminus^2 - bplus^2 - bminus^2
     end
     return mp
 end

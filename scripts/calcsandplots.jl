@@ -7,6 +7,7 @@ using Plots
 using MajoranaFunctions
 using LaTeXStrings
 using BlackBoxOptim
+using Printf
 
 function create_sweetspot_optfunc(particle_ops, params, scansyms, weight, ϵ)
     function sweetspotfunc(x)
@@ -155,31 +156,31 @@ function bdgparticles(particle_ops, site, μ, Δind)
 end
 
 function test()
-    sites = 4
-    d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
-	c = FermionBasis(1:sites, qn=QuantumDots.parity)
     ϵ = 0
     t = Δ = 1
     paramsk = Dict(:ϵ=>ϵ, :t=>t, :Δ=>Δ)
     λ = π/4
-    w = t/(cos(λ)*sin(λ))
-    Vz = 1e4w
-    Δind = Vz*cos(λ)
-    μ = Vz*sin(λ)
+    w = 1
+    Vz = 1e6w
+    U = 10w
+    μ, Δind = MajoranaFunctions.μΔind_init(λ, Vz, U)
     Φ = 0w
-    U = 0w
     params = Dict(:μ=>μ, :w=>w, :λ=>λ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz) 
-    odd, even = MajoranaFunctions.groundstates(d, localpairingham, params)
-    oddk, evenk = MajoranaFunctions.groundstates(c, kitaev, paramsk)
-    aleft, _ = bdgparticles(d, 1, μ, Δind)
-    aright, _ = bdgparticles(d, sites, μ, Δind)
-    γ = aleft' + aleft
+    sitesvec = collect(2:6)
+    localp = zeros(length(sitesvec), 3)
+    kitaevres = zeros(length(sitesvec), 3)
+    for (j, sites) in enumerate(sitesvec)
+        d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
+	    c = FermionBasis(1:sites, qn=QuantumDots.parity)
+        localp[j, :] .= measures(d, localpairingham, params, sites)
+        kitaevres[j, :] .= measures(c, kitaev, paramsk, sites)
+    end
+    initializeplot()
+    display(plot(sitesvec, [abs.(localp[:, 3]) abs.(kitaevres[:,3])], c=[:green :blue], ylabel=L"\delta\rho", dpi=300,
+                 labels=["Local pairing" "Kitaev"], xlabel="Sites", title="At sweet spot (U=$U)", shape=:circle))
+    params = @strdict U λ Vz
+    save = "drhoofsites"*savename(params)
+    # png(plotsdir("drhoofsites", save))
 
-    γplus, γminus = MajoranaFunctions.constructmajoranas(d, odd, even, sites)
-    γplusk, γminusk = MajoranaFunctions.constructmajoranas(c, oddk, evenk, sites)
-    f = 1/2*(γplus + 1im*γminus)
-    fk = 1/2*(γplusk + 1im*γminusk)
-    println("Kitaev ", norm(fk'*oddk - evenk))
-    println("Mine ", norm(f'*odd - even))
 end
 end
