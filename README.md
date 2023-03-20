@@ -1,6 +1,6 @@
 # Majorana bound states in chains of interacting quantum dots
 
-Ongoing repository for my master's thesis. Based on the (unpublished) Julia package "QuantumDots".
+Ongoing repository for my master's thesis. Based on the (unpublished) Julia package "QuantumDots". Most of the code can be found under src/MajoranaFunctions/src.
 
 
 

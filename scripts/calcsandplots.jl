@@ -105,7 +105,7 @@ function sweetspotzeeman(simparams, maxtime)
     return fulld
 end
 
-function calc()
+function calcvaryingzeeman()
     sites = 3
     w = 1.0
     Φ = 0w
@@ -155,7 +155,7 @@ function bdgparticles(particle_ops, site, μ, Δind)
     return a,b
 end
 
-function test()
+function sweetspotvarsites()
     ϵ = 0
     t = Δ = 1
     paramsk = Dict(:ϵ=>ϵ, :t=>t, :Δ=>Δ)
@@ -181,6 +181,36 @@ function test()
     params = @strdict U λ Vz
     save = "drhoofsites"*savename(params)
     # png(plotsdir("drhoofsites", save))
+end
 
+function test()
+    sites = 3
+    d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
+    λ = π/4
+    w = 1.0
+    Vz = 1e6w
+    U = 0w
+    μ, Δind = MajoranaFunctions.μΔind_init(λ, Vz, U)
+    Φ = 0w
+    params = Dict(:μ=>μ, :w=>w, :λ=>λ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz) 
+    site = 3
+    a,b = bdgparticles(d, site, μ, Δind)
+    pairing = Δind*d[site, :↑]'d[site, :↓]'
+    pairing += pairing'
+    pairing2 = Δind/Vz*(Δind*(b'b-a*a') - μ*(a*b +b'a'))
+    odd, even = MajoranaFunctions.groundstates(d, localpairingham, params)
+    ops = Dict("n_a"=>Δind^2/Vz*a*a', "n_b"=>Δind^2/Vz*b'b, "ab"=>Δind*μ/Vz*a*b, "b'a'"=>Δind*μ/Vz*b'*a', 
+              "a"=>a, "b"=>b)
+    for (name, state) in Dict("odd"=>odd, "even"=>even)
+        println(name)
+        for (label, op) in pairs(ops)
+            println("$label: $(real(dot(state, op, state)))")
+        end
+        println("<pairing> $(dot(state, pairing, state))")
+        println("Expected value for inf Vz $(-Δind^2/(2*Vz))")
+        println(norm(b*state))
+        println()
+    end
+    println(norm(pairing-pairing2))
 end
 end
