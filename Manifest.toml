@@ -685,7 +685,7 @@ uuid = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 version = "2.6.0"
 
 [[deps.QuantumDots]]
-deps = ["BlockDiagonals", "Dictionaries", "Krylov", "LinearAlgebra", "LinearMaps", "Random", "SparseArrays", "SplitApplyCombine", "Symbolics"]
+deps = ["BlockDiagonals", "Dictionaries", "Krylov", "LinearAlgebra", "LinearMaps", "Random", "SparseArrays", "SplitApplyCombine", "Symbolics", "TruncatedStacktraces"]
 path = "src/QuantumDots"
 uuid = "312194fd-fec5-4b07-ba1c-a40d7013a56a"
 version = "0.3.0"
@@ -955,6 +955,12 @@ deps = ["Test"]
 git-tree-sha1 = "8d0d7a3fe2f30d6a7f833a5f19f7c7a5b396eae6"
 uuid = "a2a6695c-b41b-5b7d-aed9-dbfdeacea5d7"
 version = "0.3.0"
+
+[[deps.TruncatedStacktraces]]
+deps = ["InteractiveUtils", "MacroTools", "Preferences"]
+git-tree-sha1 = "6901000d75a14520bdd067fe90b9392384eb04a7"
+uuid = "781d530d-4396-4725-bb49-402e4bee1e77"
+version = "1.2.0"
 
 [[deps.URIs]]
 git-tree-sha1 = "074f993b0ca030848b897beff716d93aca60f06a"

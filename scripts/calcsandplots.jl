@@ -46,7 +46,7 @@ end
 function twodimscan()
     sites = 2
     d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
-    points = 50
+    points = 100
     w = 1.0
     λ = π/4
     Φ = 0w
@@ -55,10 +55,10 @@ function twodimscan()
     μval, Δindval = MajoranaFunctions.μΔind_init(λ, Vz, U)
     dμ = 10w
     dΔind = 10w
-    # μ = collect(range(0.1, 1.2Vz, points))
-    # Δind = collect(range(0.1, 1.2Vz, points))
-    μ = collect(range(μval - dμ, μval + dμ, points))
-    Δind = collect(range(Δindval - dΔind, Δindval + dΔind, points))
+    μ = collect(range(0.1, 1.2Vz, points))
+    Δind = collect(range(0.1, 1.2Vz, points))
+    # μ = collect(range(μval - dμ, μval + dμ, points))
+    # Δind = collect(range(Δindval - dΔind, Δindval + dΔind, points))
     xparams = Dict(:Δind=>Δind)
     yparams = Dict(:μ=>μ)
     fix_params = Dict(:w=>w, :λ=>λ, :Φ=>Φ, :U=>U, :Vz=>Vz) 
@@ -161,8 +161,8 @@ function sweetspotvarsites()
     paramsk = Dict(:ϵ=>ϵ, :t=>t, :Δ=>Δ)
     λ = π/4
     w = 1
-    Vz = 1e6w
-    U = 10w
+    Vz = 1e4w
+    U = 0w
     μ, Δind = MajoranaFunctions.μΔind_init(λ, Vz, U)
     Φ = 0w
     params = Dict(:μ=>μ, :w=>w, :λ=>λ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz) 
