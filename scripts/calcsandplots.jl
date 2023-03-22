@@ -9,21 +9,21 @@ using LaTeXStrings
 using BlackBoxOptim
 using Printf
 
-function create_sweetspot_optfunc(particle_ops, params, scansyms, weight, ϵ)
+function create_sweetspot_optfunc(particle_ops, params, scansyms, weight, ϵ, sites)
     function sweetspotfunc(x)
         for i in 1:length(scansyms)
             params[scansyms[i]] = x[i]
         end
-        gap, mp, dρsq = measures(particle_ops, localpairingham, params)
+        gap, mp, dρsq = measures(particle_ops, localpairingham, params, sites)
         return dρsq + weight*(abs(gap) - ϵ)^2
     end
     return sweetspotfunc
 end
 
-function optimizesweetspot(particle_ops, params::Dict{Symbol, T}, scansyms::NTuple{M, Symbol}, guess, range, maxtime) where {T,M}
+function optimizesweetspot(particle_ops, params::Dict{Symbol, T}, scansyms::NTuple{M, Symbol}, guess, range, maxtime, sites) where {T,M}
     weights = [1, 1e4, 1e9]
     for w in weights
-        opt_func = create_sweetspot_optfunc(particle_ops, params, scansyms, w, 1e-7)
+        opt_func = create_sweetspot_optfunc(particle_ops, params, scansyms, w, 1e-7, sites)
         res = bboptimize(opt_func, guess, SearchRange=range, TraceMode=:compact,
                          MaxTime=maxtime/length(weights))
         guess = best_candidate(res)
@@ -32,8 +32,18 @@ function optimizesweetspot(particle_ops, params::Dict{Symbol, T}, scansyms::NTup
     for i in 1:length(scansyms)
         params[scansyms[i]] = point[i]
     end
-    gap, mp, dρsq = measures(particle_ops, localpairingham, params)
+    gap, mp, dρsq = measures(particle_ops, localpairingham, params, sites)
     return point, gap, dρsq, mp
+end
+
+beta(μ, Δind) = √(μ^2 + Δind^2)
+
+function bdgparticles(particle_ops, site, μ, Δind)
+    c = particle_ops
+    β = beta(μ, Δind)
+    a = (√(β - μ)*c[site,:↑]' - √(β + μ)*c[site,:↓])/√(2β)
+    b = (√(β - μ)*c[site,:↓]' + √(β + μ)*c[site,:↑])/√(2β)
+    return a,b
 end
 
 function initializeplot()
@@ -52,30 +62,35 @@ function twodimscan()
     Φ = 0w
     U = 0w
     Vz = 100w
-    μval, Δindval = MajoranaFunctions.μΔind_init(λ, Vz, U)
+    μinit, Δindinit = MajoranaFunctions.μΔind_init(λ, Vz, U)
+    fix_params = Dict(:w=>w, :λ=>λ, :Φ=>Φ, :U=>U, :Vz=>Vz) 
+    opt_params = merge(fix_params, Dict(:μ=>0, :Δind=>0))
     dμ = 10w
     dΔind = 10w
     μ = collect(range(0.1, 1.2Vz, points))
     Δind = collect(range(0.1, 1.2Vz, points))
-    # μ = collect(range(μval - dμ, μval + dμ, points))
-    # Δind = collect(range(Δindval - dΔind, Δindval + dΔind, points))
-    xparams = Dict(:Δind=>Δind)
-    yparams = Dict(:μ=>μ)
-    fix_params = Dict(:w=>w, :λ=>λ, :Φ=>Φ, :U=>U, :Vz=>Vz) 
+    μrange = collect(range(μinit - dμ, μinit + dμ, points))
+    Δindrange = collect(range(Δindinit - dΔind, Δindinit + dΔind, points))
+    range_opt = [(Δindrange[1], Δindrange[end]), (μrange[1], μrange[end])]
+    (μss, Δindss), gapss, dρsqss = optimizesweetspot(d, opt_params, (:μ, :Δind), [Δindinit, μinit], range_opt, 500, sites)
+    dscan = 1w
+    μscan = collect(range(μss - dscan, μss + dscan, points))
+    Δindscan = collect(range(Δindss - dscan, Δindss + dscan, points))
+    # μscan = collect(range(0.1, 1.2Vz, points))
+    # Δindscan = collect(range(0.1, 1.2Vz, points))
+    xparams = Dict(:Δind=>Δindscan)
+    yparams = Dict(:μ=>μscan)
     @time gap, mp, dρ = scan2d(xparams, yparams, fix_params, d, localpairingham, points, sites)
-    # opt_params = merge(fix_params, Dict(:μ=>0, :Δind=>0))
-    # range_opt = [(Δind[1], Δind[end]), (μ[1], μ[end])]
-    # sweetspot, gapss, dρsqss = optimizesweetspot(d, opt_params, (:Δind, :μ), [Δindval, μval], range_opt, 1000)
     initializeplot()
-    p = heatmap(Δind, μ, dρ, c=:acton)
+    p = heatmap(Δindscan, μscan, dρ, c=:acton)
     contourlvl = 0.05
     lvls = [[-contourlvl], [0.0], [contourlvl]]
     clrs = [:green4, :lightgreen, :green4]
     for i in 1:length(lvls)
-        contour!(p, Δind, μ, gap, levels=lvls[i], c=clrs[i], colorbar_entry=false)
+        contour!(p, Δindscan, μscan, gap, levels=lvls[i], c=clrs[i], colorbar_entry=false)
     end
-    # scatter!(p, [sweetspot[1]], [sweetspot[2]], c=:cyan, legend=false)
-    scatter!(p, [Δindval], [μval], c=:red, legend=false)
+    scatter!(p, [Δindss], [μss], c=:cyan, legend=false)
+    # scatter!(p, [Δindinit], [μinit], c=:red, legend=false)
     display(plot(p, xlabel=L"\Delta_{ind}/w", ylabel=L"\mu/w",
                  colorbar_title=L"\delta \rho", title=L"N=%$sites, U=%$U, V_z=%$Vz"))
     # println(gapss)
@@ -94,11 +109,11 @@ function sweetspotzeeman(simparams, maxtime)
     dρs = zeros(Float64, points)
     mps = zeros(Float64, points)
     for j in 1:points
-        μ, Δind = MajoranaFunctions.μΔind_init(λ, Vz[j], U)
-        params = Dict(:μ=>μ, :w=>w, :λ=>λ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz[j])
+        init = MajoranaFunctions.μΔind_init(λ, Vz[j], U)
+        params = Dict(:μ=>init[1], :w=>w, :λ=>λ, :Δind=>init[2], :Φ=>Φ, :U=>U, :Vz=>Vz[j])
         diffs = (10w, 10w)
         range = [(init[i] - diffs[i], init[i] + diffs[i]) for i in 1:2]
-        _, gaps[j], dρs[j], mps[j] = optimizesweetspot(d, params, (:Δind, :μ), init, range, maxtime)
+        _, gaps[j], dρs[j], mps[j] = optimizesweetspot(d, params, (:Δind, :μ), init, range, maxtime, sites)
     end
     fulld = copy(simparams)
     fulld["gap"], fulld["dρ"], fulld["mp"] = gaps, dρs, mps
@@ -112,7 +127,7 @@ function calcvaryingzeeman()
     λ = π/4
     U = [0, 5].*w
     Vz = collect(10.0 .^ range(-1.5, 3, 10))
-    maxtime = 1000
+    maxtime = 500
     simparams = Dict("w"=>w, "λ"=>λ, "Φ"=>Φ, "Vz"=>[Vz], "U"=>U, "sites"=>sites)
     dicts = dict_list(simparams)
     for d in dicts
@@ -122,8 +137,24 @@ function calcvaryingzeeman()
     readdir(datadir("sims"))
 end
 
+function plotdρ()
+	noUsim = readdir(datadir("sims"))[1]
+    noUdict = wload(datadir("sims", noUsim))
+    noUdρ, Vz, noU, λ, sites = noUdict["dρ"], noUdict["Vz"], noUdict["U"], noUdict["λ"], noUdict["sites"]
+	Usim = readdir(datadir("sims"))[5]
+    Udict = wload(datadir("sims", Usim))
+    Udρ, U = Udict["dρ"], Udict["U"]
+    initializeplot()
+    p = plot(Vz, [noUdρ Udρ], markershape=[:diamond :circle], lc=[:blue :orange], label=["U = $noU" "U = $U"],
+             xscale=:log10, title=L"N=%$sites, λ/\pi=%$(λ/π)", ylabel=L"\delta\rho", xlabel=L"V_z/w", yscale=:log10)
+    display(plot(p))
+    params = @strdict sites λ
+    save = "drho"*savename(params)
+    # png(plotsdir("ssvarzeeman", save))
+end
+
 function plotzeeman()
-	firstsim = readdir(datadir("sims"))[1]
+	firstsim = readdir(datadir("sims"))[2]
     dict = wload(datadir("sims", firstsim))
     gap, dρ, mp, Vz, sites, U, λ = dict["gap"], dict["dρ"], dict["mp"], dict["Vz"],
                                    dict["sites"], dict["U"], dict["λ"]
@@ -135,25 +166,16 @@ function plotzeeman()
              lc=:orange, markercolor=:orange)
     p = plot!(twinx(), Vz, dρ, markershape=:diamond, markercolor=:orange, lc=:orange, legend=false,
              ylabel=L"\delta\rho")
-    plot!(Vz, NaN.*(1:length(Vz)), label=L"MP", markershape=:cross, 
+    plot!(Vz, NaN.*(1:length(Vz)), label="MP", markershape=:cross, 
              lc=:green, markercolor=:green)
     p = plot!(twinx(), Vz, abs.(mp), markershape=:cross, markercolor=:green, lc=:green, legend=false,
              ylabel=L"MP")
     display(plot(p, xscale=:log10))
-    # params = @strdict sites U λ
-    # save = "ssvarzeeman"*savename(params)
+    params = @strdict sites U λ
+    save = "ssvarzeeman"*savename(params)
     # png(plotsdir("ssvarzeeman", save))
 end
 
-beta(μ, Δind) = √(μ^2 + Δind^2)
-
-function bdgparticles(particle_ops, site, μ, Δind)
-    c = particle_ops
-    β = beta(μ, Δind)
-    a = (√(β - μ)*c[site,:↑]' - √(β + μ)*c[site,:↓])/√(2β)
-    b = (√(β - μ)*c[site,:↓]' + √(β + μ)*c[site,:↑])/√(2β)
-    return a,b
-end
 
 function sweetspotvarsites()
     ϵ = 0
