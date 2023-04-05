@@ -1,6 +1,6 @@
 function lengthofparams(sites)
-    return (μ=sites, Δind=sites, w=sites-1, λ=sites-1, Φ=sites, U=sites, Vz=sites,
-                ϵ=sites, Δ=sites, t=sites-1)
+    return (μ=sites, Δind=sites, w=sites-1, λ=sites-1, Φ=sites, U=sites, U_inter=sites-1,
+            Vz=sites, ϵ=sites, Δ=sites, t=sites-1)
 end
 
 function convert_to_namedtuple(params, sites)
@@ -16,7 +16,13 @@ function convert_to_namedtuple(params, sites)
     return (; newparams...)
 end
 
-function localpairingham(particle_ops, params::NamedTuple{S, NTuple{7, Vector{Float64}}}) where S
+numop(particle_ops, label) = particle_ops[label]'*particle_ops[label]
+
+interaction(particle_ops, label1, label2) = numop(particle_ops, label1)*numop(particle_ops, label2)
+
+η(spin) = spin == :↑ ? -1 : 1
+
+function localpairingham(particle_ops, params::NamedTuple{S, NTuple{8, Vector{Float64}}}) where S
     d = particle_ops
     sites = QuantumDots.nbr_of_fermions(d) ÷ 2
     p = params
@@ -26,16 +32,18 @@ function localpairingham(particle_ops, params::NamedTuple{S, NTuple{7, Vector{Fl
     λ = p.λ
     Φ = p.Φ
     U = p.U
+    U_inter = p.U_inter
     Vz = p.Vz
-    ham_dot_sp = ((μ[j] - η(σ)*Vz[j])*d[j,σ]'d[j,σ] for j in 1:sites, σ in (:↑, :↓))
-    ham_dot_int = (U[j]*d[j,:↑]'d[j,:↑]*d[j,:↓]'d[j,:↓] for j in 1:sites)
-    ham_tun_normal = (w[j]*cos(λ[j])*d[j, σ]'d[j+1, σ] for j in 1:sites-1, σ in (:↑, :↓))
-    ham_tun_flip = (w[j]*sin(λ[j])*(d[j, :↑]'d[j+1, :↓] - d[j, :↓]'d[j+1, :↑]) for j in 1:sites-1) 
-    ham_sc = (Δind[j]*exp(1im*Φ[j])*d[j, :↑]'d[j, :↓]' for j in 1:sites)
-    ham = sum(ham_tun_normal) + sum(ham_tun_flip) + sum(ham_sc)
+    single = ((μ[j] - η(σ)*Vz[j])*numop(d, (j,σ)) for j in 1:sites, σ in (:↑, :↓))
+    intra = (U[j]*interaction(d, (j,:↑), (j,:↓)) for j in 1:sites)
+    inter = (U_inter[j]*(numop(d,(j,:↑)) + numop(d,(j,:↓)))*(numop(d,(j+1,:↑)) + numop(d,(j+1,:↓))) for j in 1:sites-1)
+    tun_normal = (w[j]*cos(λ[j])*d[j, σ]'d[j+1, σ] for j in 1:sites-1, σ in (:↑, :↓))
+    tun_flip = (w[j]*sin(λ[j])*(d[j, :↓]'d[j+1, :↑] - d[j, :↑]'d[j+1, :↓]) for j in 1:sites-1) 
+    sc = (Δind[j]*exp(1im*Φ[j])*d[j, :↑]'d[j, :↓]' for j in 1:sites)
+    ham = sum(tun_normal) + sum(tun_flip) + sum(sc)
     # add conjugates
     ham += ham'
-    ham += sum(ham_dot_sp) + sum(ham_dot_int)
+    ham += sum(single) + sum(intra) + sum(inter)
     return QuantumDots.blockdiagonal(Matrix(ham), d)
 end
 
@@ -45,7 +53,6 @@ function localpairingham(particle_ops, params::Dict{Symbol, T}) where T
     return localpairingham(particle_ops, newparams)
 end
 
-η(spin) = spin == :↑ ? -1 : 1
 
 function kitaev(particle_ops, params::NamedTuple{S, NTuple{3, Vector{Float64}}}) where S
     d = particle_ops
