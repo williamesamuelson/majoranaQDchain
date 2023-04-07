@@ -40,10 +40,18 @@ function localpairingham(particle_ops, params::NamedTuple{S, NTuple{8, Vector{Fl
     tun_normal = (w[j]*cos(λ[j])*d[j, σ]'d[j+1, σ] for j in 1:sites-1, σ in (:↑, :↓))
     tun_flip = (w[j]*sin(λ[j])*(d[j, :↓]'d[j+1, :↑] - d[j, :↑]'d[j+1, :↓]) for j in 1:sites-1) 
     sc = (Δind[j]*exp(1im*Φ[j])*d[j, :↑]'d[j, :↓]' for j in 1:sites)
-    ham = sum(tun_normal) + sum(tun_flip) + sum(sc)
+    if sites > 1
+        ham = sum(tun_normal) + sum(tun_flip) + sum(sc)
+    else 
+        ham = sum(sc)
+    end
     # add conjugates
     ham += ham'
-    ham += sum(single) + sum(intra) + sum(inter)
+    if sites > 1
+        ham += sum(single) + sum(intra) + sum(inter)
+    else
+        ham += sum(single) + sum(intra)
+    end
     return QuantumDots.blockdiagonal(Matrix(ham), d)
 end
 
@@ -98,9 +106,10 @@ end
 
 function measures(particle_ops, ham_fun, params, sites)
     energies, vecs, oddind, evenind = handleblocks(particle_ops, ham_fun, params)
-    gap = (energies[evenind] - energies[oddind])
+    gap = energies[oddind] - energies[evenind]
+    energies = real.(energies)
     sort!(energies)
-    top_gap = energies[3] - energies[1]
+    top_gap =  energies[3] - energies[1]
     gap /= top_gap # normalize by topological gap
     mp = majoranapolarization(particle_ops, vecs[:,oddind], vecs[:,evenind], sites)
     dρ = robustness(particle_ops, vecs[:, oddind], vecs[:, evenind], sites)

@@ -53,30 +53,32 @@ function initializeplot()
     scalefontsizes(1.3)
 end
 
-function twodimscan()
+function twodimscan(opt=false)
     sites = 2
     d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
     points = 100
     w = 1.0
     λ = π/4
-    Φ = 0w
-    U = 5w
-    U_inter = 1w
-    Vz = 100w
-    μinit, Δindinit = MajoranaFunctions.μΔind_init(λ, Vz, U)
+    Φ = [0, π/8].*w
+    U = 0w
+    U_inter = 0w
+    Vz = 20w
     fix_params = Dict(:w=>w, :λ=>λ, :Φ=>Φ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
-    opt_params = merge(fix_params, Dict(:μ=>0, :Δind=>0))
-    dμ = 10w
-    dΔind = 10w
-    μrange = collect(range(μinit - dμ, μinit + dμ, points))
-    Δindrange = collect(range(Δindinit - dΔind, Δindinit + dΔind, points))
-    range_opt = [(Δindrange[1], Δindrange[end]), (μrange[1], μrange[end])]
-    (μss, Δindss), gapss, dρsqss = optimizesweetspot(d, opt_params, (:μ, :Δind), [Δindinit, μinit], range_opt, 500, sites)
-    dscan = 10w
-    μscan = collect(range(μss - dscan, μss + dscan, points))
-    Δindscan = collect(range(Δindss - dscan, Δindss + dscan, points))
-    # μscan = collect(range(0.1, 1.2Vz, points))
-    # Δindscan = collect(range(0.1, 1.2Vz, points))
+    if opt
+        μinit, Δindinit = MajoranaFunctions.μΔind_init(λ, Vz, U)
+        opt_params = merge(fix_params, Dict(:μ=>0, :Δind=>0))
+        dμ = 100w
+        dΔind = 100w
+        μrange = collect(range(μinit - dμ, μinit + dμ, points))
+        Δindrange = collect(range(Δindinit - dΔind, Δindinit + dΔind, points))
+        range_opt = [(Δindrange[1], Δindrange[end]), (μrange[1], μrange[end])]
+        (μss, Δindss), gapss, dρsqss = optimizesweetspot(d, opt_params, (:μ, :Δind), [Δindinit, μinit], range_opt, 500, sites)
+    end
+    dscan = Vz
+    # μscan = collect(range(μss - dscan, μss + dscan, points))
+    # Δindscan = collect(range(Δindss - dscan, Δindss + dscan, points))
+    μscan = collect(range(0.1, 1.2Vz, points))
+    Δindscan = collect(range(0.1, 1.2Vz, points))
     xparams = Dict(:Δind=>Δindscan)
     yparams = Dict(:μ=>μscan)
     @time gap, mp, dρ = scan2d(xparams, yparams, fix_params, d, localpairingham, points, sites)
@@ -88,11 +90,13 @@ function twodimscan()
     for i in 1:length(lvls)
         contour!(p, Δindscan, μscan, gap, levels=lvls[i], c=clrs[i], colorbar_entry=false)
     end
-    scatter!(p, [Δindss], [μss], c=:cyan, legend=false)
-    scatter!(p, [Δindinit], [μinit], c=:red, legend=false)
+    if opt
+        scatter!(p, [Δindss], [μss], c=:cyan, legend=false)
+        scatter!(p, [Δindinit], [μinit], c=:red, legend=false)
+        println(dρsqss)
+    end
     display(plot(p, xlabel=L"\Delta_{ind}/w", ylabel=L"\mu/w",
                  colorbar_title=L"\delta \rho", title=L"N=%$sites, U=%$U, V_z=%$Vz"))
-    println(dρsqss)
     # params = @strdict sites U Vz
     # save = "2dscan"*savename(params)
     # png(plotsdir("2dscans", save))
@@ -241,4 +245,47 @@ function test()
     end
     println(norm(pairing-pairing2))
 end
+
+function testgap()
+    sites = 3
+    d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
+    points = 100
+    w = 1.0
+    λ = π/4
+    Φ = 0w
+    U = 0w
+    U_inter = 0w
+    Vz = 20w
+    μinit, Δindinit = MajoranaFunctions.μΔind_init(λ, Vz, U)
+    fix_params = Dict(:w=>w, :λ=>λ, :Φ=>Φ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
+    dscan = Vz
+    # μscan = collect(range(μinit - dscan, μinit + dscan, points))
+    μscan = collect(range(-1.2Vz, 1.2Vz, points))
+    Δindscan = collect(range(-1.2Vz, 1.2Vz, points))
+    xparams = Dict(:Δind=>Δindscan)
+    yparams = Dict(:μ=>μscan)
+    @time gap, mp, dρ = scan2d(xparams, yparams, fix_params, d, localpairingham, points, sites)
+    initializeplot()
+    # p = contour(Δindscan, μscan, gap, levels=[0])
+    p = heatmap(Δindscan, μscan, gap, c=:balance)
+    display(plot(p, xlabel=L"\Delta_{ind}/w", ylabel=L"\mu/w",
+                 colorbar_title=L"\delta E", title=L"N=%$sites, U=%$U, V_z=%$Vz"))
+end
+
+function testgap2()
+    sites = 2
+    d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
+    points = 200
+    w = 1.0
+    λ = π/4
+    Φ = 0w
+    U = 0w
+    U_inter = 0w
+    Vz = 50w
+    Δind = Vz*sin(λ)
+    μ = Vz*cos(λ)
+    params = Dict(:μ=>μ, :w=>w, :λ=>λ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
+    gap, mp, dρsq = measures(d, localpairingham, params, sites)
+end
+
 end
