@@ -1,6 +1,6 @@
 function lengthofparams(sites)
     return (μ=sites, Δind=sites, w=sites-1, λ=sites-1, Φ=sites, U=sites, U_inter=sites-1,
-            Vz=sites, ϵ=sites, Δ=sites, t=sites-1)
+            Vz=sites, ϵ=sites, Δ=sites, t=sites-1, U_k=sites-1)
 end
 
 function convert_to_namedtuple(params, sites)
@@ -54,19 +54,22 @@ function localpairingham(particle_ops, params::Dict{Symbol, T}) where T
 end
 
 
-function kitaev(particle_ops, params::NamedTuple{S, NTuple{3, Vector{Float64}}}) where S
+function kitaev(particle_ops, params::NamedTuple{S, NTuple{4, Vector{Float64}}}) where S
     d = particle_ops
     sites = QuantumDots.nbr_of_fermions(d)
     p = params
     ϵ = p.ϵ
     Δ = p.Δ
     t = p.t
-    ham_dot = (ϵ[j]*d[j]'d[j] for j in 1:sites)
+    U_k = p.U_k
+    ham_dot = (ϵ[j]*numop(d, j) for j in 1:sites)
     ham_tun = (t[j]*d[j+1]'d[j] for j in 1:sites-1)
     ham_sc = (Δ[j]*d[j+1]'d[j]' for j in 1:sites-1)
+    ham_int = (U_k[j]*interaction(d, j, j+1) for j in 1:sites-1)
+    # ham_int = (U_k[j]*d[j+1]'d[j+1]*d[j]'d[j] for j in 1:sites-1)
     ham = sum(ham_tun) + sum(ham_sc)
     ham += ham'
-    ham += sum(ham_dot)
+    ham += sum(ham_dot) + sum(ham_int)
     return QuantumDots.blockdiagonal(Matrix(ham), d)
 end
 
