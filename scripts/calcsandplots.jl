@@ -60,7 +60,8 @@ function getoptrange(μinit, Δindinit, Vz, U_inter, U, w)
         dμ = 1.5w
     end
     dΔind = Vz + U_inter + U/2
-    return [(0, Δindinit + dΔind), (μinit - dμ, μinit + dμ)]
+    # return [(0, Δindinit + dΔind), (μinit - dμ, μinit + dμ)]
+    return [(0, Δindinit + dΔind), (0, μinit + dμ)]
 end
 
 function twodimscan(simparams; opt=true, maxtime=100)
@@ -93,8 +94,9 @@ end
 function calctwodimscanlp(save=false)
     sites = 2
     w = 1.0
-    λ = π/4
-    Φ = 0w
+    λ = π/3
+    dΦ = 0.9π
+    Φ = collect(range(0,(sites-1)*dΦ, sites))
     U = 0w
     U_inter = 0w
     Vz = 20w
@@ -104,7 +106,8 @@ function calctwodimscanlp(save=false)
     μinit, Δindinit = MajoranaFunctions.μΔind_init(λ, Vz, U)
     init = [Δindinit, μinit]
     optrange = getoptrange(μinit, Δindinit, Vz, U_inter, U, w)
-    scanrange = tuple((collect(range(optrange[i][1], optrange[i][2], points)) for i in 1:2)...)
+    # scanrange = tuple((collect(range(optrange[i][1], optrange[i][2], points)) for i in 1:2)...)
+    scanrange = (collect(range(0.1, 1.2Vz,points)), collect(range(-1.2Vz, 1.2Vz, points)))
     simparams = Dict("fix_params"=>fix_params, "sites"=>sites, "ham"=>localpairingham, "points"=>points,
                     "scanrange"=>scanrange, "optrange"=>optrange, "init"=>init, "scansyms"=>scansyms)
     res = twodimscan(simparams, opt=true) 
@@ -116,7 +119,7 @@ function calctwodimscanlp(save=false)
     return res
 end
 
-function plottwodimscanlp(d, save=false)
+function plottwodimscanlp(d; save=false)
     points, scanrange = d["points"], d["scanrange"]
     Δindscan = scanrange[1]
     μscan = scanrange[2]
@@ -124,21 +127,25 @@ function plottwodimscanlp(d, save=false)
     dρ, gap = d["dρ"], d["gap"]
     Δindss, μss = d["sspoint"]
     fix_params = d["fix_params"]
+    sites = d["sites"]
     initializeplot()
-    p = heatmap(Δindscan, μscan.-μinit, dρ, c=:acton, dpi=300)
+    p = heatmap(Δindscan, μscan, dρ, c=:acton, dpi=300)
     contourlvl = 0.05
     lvls = [[-contourlvl], [0.0], [contourlvl]]
     clrs = [:green4, :lightgreen, :green4]
     for i in 1:length(lvls)
-        contour!(p, Δindscan, μscan.-μinit, gap, levels=lvls[i], c=clrs[i], colorbar_entry=false)
+        contour!(p, Δindscan, μscan, gap, levels=lvls[i], c=clrs[i], colorbar_entry=false)
     end
-    scatter!(p, [Δindss], [μss-μinit], c=:cyan, legend=false, markershape=:star5, markersize=7)
+    scatter!(p, [Δindss], [μss], c=:cyan, legend=false, markershape=:star5, markersize=7)
     println(d["ssLI"])
-    scatter!(p, [Δindinit], [μinit-μinit], c=:red, legend=false)
-    display(plot(p, xlabel=L"\Delta_{ind}/t", ylabel=L"(\mu-\mu_\mathrm{init})/t",
+    # scatter!(p, [Δindinit], [μinit], c=:red, legend=false)
+    display(plot(p, xlabel=L"\Delta_\mathrm{ind}/t", ylabel=L"\mu/t",
                  colorbar_title="LI"))
     if save
-        params = @strdict sites U U_inter Vz
+        println(fix_params)
+        Φ, U, U_inter, Vz = fix_params[:Φ], fix_params[:U], fix_params[:U_inter], fix_params[:Vz]
+        dΦ = Φ[2] - Φ[1]
+        params = @strdict sites U U_inter Vz dΦ
         save = "2dscan"*savename(params)
         png(plotsdir("2dscans", save))
     end
