@@ -91,26 +91,35 @@ function twodimscan(simparams; opt=true, maxtime=100)
     return fulld
 end
 
-function calctwodimscanlp(save=false)
+function calctwodimscanlp(;opt=true, save=false)
     sites = 3
     w = 1.0
-    λ = π/4
+    λ = π/6
     dΦ = 0π
     Φ = collect(range(0,(sites-1)*dΦ, sites))
     U = 0w
     U_inter = 0w
-    Vz = 5w
+    Vz = 50w
     fix_params = Dict(:w=>w, :λ=>λ, :Φ=>Φ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
     scansyms = (:Δind, :μ)
-    points = 100
+    points = 200
     μinit, Δindinit = MajoranaFunctions.μΔind_init(λ, Vz, U)
+    # Δindinit = Vz*cos(λ)
+    # μinit = MajoranaFunctions.μguess(Δindinit, Vz, U)
     init = [Δindinit, μinit]
-    optrange = getoptrange(μinit, Δindinit, Vz, U_inter, U, w)
-    scanrange = tuple((collect(range(optrange[i][1], optrange[i][2], points)) for i in 1:2)...)
-    # scanrange = (collect(range(0.1, 1.2Vz,points)), collect(range(0.1, 1.2Vz, points)))
     simparams = Dict("fix_params"=>fix_params, "sites"=>sites, "ham"=>localpairingham, "points"=>points,
-                    "scanrange"=>scanrange, "optrange"=>optrange, "init"=>init, "scansyms"=>scansyms)
-    res = twodimscan(simparams, opt=true) 
+                     "init"=>init, "scansyms"=>scansyms, "opt"=>opt)
+    if opt
+        optrange = getoptrange(μinit, Δindinit, Vz, U_inter, U, w)
+        # scanrange = tuple((collect(range(optrange[i][1], optrange[i][2], points)) for i in 1:2)...)
+        scanrange = (collect(range(0.1, 60, points)), collect(range(0.1, 60, points)))
+        simparams["optrange"] = optrange
+    else
+        scanrange = (collect(range(0, 60, points)), collect(range(0, 60, points)))
+    end
+    simparams["scanrange"] = scanrange
+    res = twodimscan(simparams, opt=opt, maxtime=100)
+    println(fix_params)
     if save
         params = @strdict sites U U_inter Vz λ
         @tagsave(datadir("scans", savename(params, "jld2")), res)
@@ -125,21 +134,25 @@ function plottwodimscanlp(d; save=false)
     μscan = scanrange[2]
     Δindinit, μinit = d["init"]
     dρ, gap = d["dρ"], d["gap"]
-    Δindss, μss = d["sspoint"]
     fix_params = d["fix_params"]
     sites = d["sites"]
-    # initializeplot()
-    p = heatmap(Δindscan, μscan, dρ, c=:acton, dpi=300)
+    initializeplot()
+    p = heatmap(Δindscan, μscan, dρ, c=:acton, clims=(-1e-9, maximum(dρ)), dpi=300)
     contourlvl = 0.05
     lvls = [[0.0]]
     clrs = [:green4, :lightgreen, :green4]
     for i in 1:length(lvls)
         contour!(p, Δindscan, μscan, gap, levels=lvls[i], c=clrs[i], colorbar_entry=false)
     end
-    scatter!(p, [Δindss], [μss], c=:cyan, markershape=:star5, markersize=7, label="Optimized")
-    println(d["ssLI"])
+    if d["opt"]
+        Δindss, μss = d["sspoint"]
+        scatter!(p, [Δindss], [μss], c=:cyan, markershape=:star5, markersize=7, label="Optimized")
+        println(d["ssLI"])
+    end
     scatter!(p, [Δindinit], [μinit], c=:red, label="Guess")
-    display(plot(p, xlabel=L"\Delta_\mathrm{ind}/t", ylabel=L"\mu/t",
+    # μinit0, Δindinit0 = MajoranaFunctions.μΔind_init(fix_params[:λ], fix_params[:Vz], 0)
+    # scatter!(p, [Δindinit0], [μinit0], c=:black, label="Guess0")
+    display(plot(p, xlabel=L"\Delta_\mathrm{ind}/w", ylabel=L"\mu/w",
                  colorbar_title="LI", legendposition=:bottomleft))
     if save
         println(fix_params)
@@ -154,14 +167,14 @@ end
 function calctwodimscankitaev(save=false)
     sites = 2
     t = 1.0
-    U_k = 20t
+    U_k = 0t
     fix_params = Dict(:t=>t, :U_k=>U_k)
     scansyms = (:Δ, :ϵ)
     points = 100
     init = [t, 0]
-    dscan = 1.5t + U_k
+    dscan = 1.5t
     optrange = [(0, dscan), (-dscan, dscan)]
-    scanrange = tuple((collect(range(optrange[i][1], optrange[i][2], points)) for i in 1:2)...)
+    scanrange = tuple((collect(range(-dscan, dscan, points)) for i in 1:2)...)
     # scanrange = tuple((collect(range(-2t, 2t, points)) for i in 1:2)...)
     simparams = Dict("fix_params"=>fix_params, "sites"=>sites, "ham"=>kitaev, "points"=>points,
                     "scanrange"=>scanrange, "optrange"=>optrange, "init"=>init, "scansyms"=>scansyms)
@@ -185,20 +198,20 @@ function plottwodimscankitaev(d; save=false)
     U_k = fix_params[:U_k]
     sites = d["sites"]
     initializeplot()
-    p = heatmap(Δscan, ϵscan, mp, c=:acton, dpi=300)
+    p = heatmap(Δscan, ϵscan, dρ, c=:acton, dpi=300)
     contourlvl = 0.05
-    lvls = [[-contourlvl], [0.0], [contourlvl]]
-    clrs = [:green4, :lightgreen, :green4]
+    lvls = [[0.0]]
+    clrs = [:green4]
     for i in 1:length(lvls)
         contour!(p, Δscan, ϵscan, gap, levels=lvls[i], c=clrs[i], colorbar_entry=false)
     end
-    scatter!(p, [Δss], [ϵss], c=:cyan, legend=false, markershape=:star5, markersize=7)
+    scatter!(p, [Δss], [ϵss], c=:cyan, label="Optimized", markershape=:star5, markersize=8)
     println("LI = $(d["ssLI"])")
     println("SS = ($Δss, $ϵss)")
     println("SSguess = ($(U_k/2+1), -$(U_k/2))")
-    scatter!(p, [Δinit], [ϵinit], c=:red, legend=false)
+    scatter!(p, [Δinit], [ϵinit], c=:red, label="Guess")
     display(plot(p, xlabel=L"\Delta/t", ylabel=L"\epsilon/t",
-                 colorbar_title="LI", title=L"N=%$sites, U=%$U_k"))
+                 colorbar_title="LI"))
     if save
         params = @strdict sites U_k
         save = "2dscan"*savename(params)
@@ -382,5 +395,79 @@ function testgap()
     p = heatmap(Δindscan, μscan, gap, c=:balance)
     display(plot(p, xlabel=L"\Delta_{ind}/w", ylabel=L"\mu/w",
                  colorbar_title=L"\delta E", title=L"N=%$sites, U=%$U, V_z=%$Vz"))
+end
+
+function compkitaev2d()
+    sites = 2
+    d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
+    c = FermionBasis((1:sites), qn=QuantumDots.parity)
+    t = 1.0 # Kitaev t
+    U_k = 0
+    points = 100
+    ϵ = collect(range(-2t, 2t, points))
+    Δ = collect(range(-2t, 2t, points)) # Kitaev Δ
+    α = π/6
+    Vz = 1e6t
+    Δind = Vz*cos(2α)
+    μ = .√((ϵ .+ Vz).^2 .- Δind^2)
+    w, λ = MajoranaFunctions.kitaevtoakhmerovparams2(t, Δ, μ, Δind)
+    println(w.*cos.(λ).*μ./.√(μ.^2 .+ Δind^2))
+    @assert all(.√(μ.^2 .+ Δind^2) .- Vz .≈ ϵ)
+    @assert all(w.*sin.(λ)*Δind./.√(μ.^2 .+ Δind^2) .≈ Δ)
+    @assert all(w.*cos.(λ).*μ./.√(μ.^2 .+ Δind^2) .≈ t) # check conversion
+    Φ = 0w
+    U = 0w
+    U_inter = 0
+    xscan_params = Dict(:w=>w, :λ=>λ)
+    yscan_params = Dict(:μ=>μ)
+    xscan_paramsk = Dict(:Δ=>Δ)
+    yscan_paramsk = Dict(:ϵ=>ϵ)
+    fix_params = Dict(:Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
+    fix_paramsk = Dict(:t=>t, :U_k=>U_k)
+    gap, mp, dρ = scan2d(xscan_params, yscan_params, fix_params, d, localpairingham, points, sites)
+    gapk, mpk, dρk = scan2d(xscan_paramsk, yscan_paramsk, fix_paramsk, c, kitaev, points, sites)
+    p = heatmap(Δ, ϵ, dρk.-dρ, c=:balance)
+    display(plot(p))
+    println(μ)
+    println(norm(dρk.-dρ))
+    println(norm(gapk.-gap))
+end
+function compkitaev1d()
+    sites = 2
+    d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
+    c = FermionBasis((1:sites), qn=QuantumDots.parity)
+    t = 1.0 # Kitaev t
+    ϵ = 0
+    U_k = 0
+    points = 100
+    Δ = collect(range(-2t, 2t, points)) # Kitaev Δ
+    α = 2*π/6
+    w, λ = MajoranaFunctions.kitaevtoakhmerovparams(t, Δ, α)
+    @assert all(w.*cos.(λ)*sin(2α) .≈ t) # check conversion
+    @assert all(w.*sin.(λ)*cos(2α) .≈ Δ)
+    Vz = collect(10.0 .^ range(-1, 10, 50))
+    Δind = Vz.*cos(2α)
+    μ = Vz.*sin(2α)
+    Φ = 0w
+    U = 0w
+    U_inter = 0
+    scan_params = Dict(:w=>w, :λ=>λ)
+    scan_paramsk = Dict(:Δ=>Δ)
+    fix_paramsk = Dict(:ϵ=>ϵ, :t=>t, :U_k=>U_k)
+    gapk, mpk, dρk = scan1d(scan_paramsk, fix_paramsk, c, kitaev, points, sites)
+    norms = zeros(length(Vz))
+    for j in 1:length(Vz)
+        fix_params = Dict(:μ=>μ[j], :Δind=>Δind[j], :Φ=>Φ, :U=>U, :Vz=>Vz[j], :U_inter=>U_inter)
+        gap, mp, dρ = scan1d(scan_params, fix_params, d, localpairingham, points, sites)
+        norms[j] = norm(dρ .- dρk)
+        # norms[j] = norm(mp .- mpk)
+    end
+    xticks = collect(10.0 .^ range(-1, 12, 14))
+    yticks = collect(10.0 .^ range(-1, -10,10))
+    display(plot(Vz, norms, xscale=:log10, yscale=:log10, xlabel=L"V_z/t", ylabel=L"||\mathrm{LI} - \mathrm{LI}_K||",
+                grid=true, xticks=xticks, yticks=yticks, legend=false, dpi=300))
+    params = @strdict sites α
+    save = "compkitaev"*savename(params)
+    # png(plotsdir(save))
 end
 end

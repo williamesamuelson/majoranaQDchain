@@ -79,9 +79,15 @@ function kitaev(particle_ops, params::Dict{Symbol, T}) where T
     return kitaev(particle_ops, newparams)
 end
 
-function kitaevtoakhmerovparams(t, Δ, α) 
+function kitaevtoakhmerovparams(t, Δ, α)
     λ = atan.(Δ*tan(2α)/t)
     w = t./(cos.(λ)*sin(2α))
+    return w, λ
+end
+
+function kitaevtoakhmerovparams2(t, Δ, μ, Δind)
+    λ = atan.(Δ.*μ./(Δind*t))
+    w = t.*.√(μ.^2 .+ Δind^2)/(cos.(λ).*μ)
     return w, λ
 end
 

@@ -35,6 +35,6 @@ end
 function μΔind_init(λ, Vz, U)
     f = get_sweetspot_nlsolvefunc(λ, Vz, U)
     J = get_sweetspot_nlsolvejac(λ, Vz, U)
-    sol = nlsolve(f, J, [Vz*sin(λ); Vz*cos(λ)], show_trace=false)
+    sol = nlsolve(f, J, [Vz*sin(λ); Vz*cos(λ)], show_trace=true)
     return sol.zero # μ, Δind
 end

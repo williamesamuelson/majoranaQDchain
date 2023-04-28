@@ -6,7 +6,8 @@ using Test, LinearAlgebra, QuantumDots
 	c = FermionBasis(1:sites, qn=QuantumDots.parity)
     ϵ = 0
     t = Δ = 1
-    params = Dict(:ϵ=>ϵ, :t=>t, :Δ=>Δ)
+    U_k = 0
+    params = Dict(:ϵ=>ϵ, :t=>t, :Δ=>Δ, :U_k=>U_k)
     gap, mp, dρ = measures(c, kitaev, params, sites)
     @test abs(gap) < 1e-5
     @test abs(mp) ≈ 1
@@ -31,11 +32,12 @@ end
     Δind = Vz*cos(λ)
     Φ = 0w
     U = 0w
-    params = Dict(:μ=>μ, :w=>w, :λ=>λ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz) 
+    U_inter = 0w
+    params = Dict(:μ=>μ, :w=>w, :λ=>λ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
     gap, mp, dρ = measures(d, localpairingham, params, sites)
     @test abs(gap) < 1e-5
     @test abs(mp) ≈ 1
-    # @test dρ < 1e-10 # appearently not...
+    @test dρ < 1e-8 
 
     odd, even = MajoranaFunctions.groundstates(d, localpairingham, params)
     β = √(μ^2 + Δind^2)
@@ -53,7 +55,8 @@ end
 	c = FermionBasis(1:sites, qn=QuantumDots.parity)
     ϵ = 0
     t = Δ = 1
-    paramsk = Dict(:ϵ=>ϵ, :t=>t, :Δ=>Δ)
+    U_k = 0
+    paramsk = Dict(:ϵ=>ϵ, :t=>t, :Δ=>Δ, :U_k=>U_k)
     λ = π/4
     w = t/(cos(λ)*sin(λ))
     Vz = 1e4w
@@ -61,7 +64,8 @@ end
     μ = Vz*sin(λ)
     Φ = 0w
     U = 0w
-    params = Dict(:μ=>μ, :w=>w, :λ=>λ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz) 
+    U_inter = 0w
+    params = Dict(:μ=>μ, :w=>w, :λ=>λ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
     odd, even = MajoranaFunctions.groundstates(d, localpairingham, params)
     oddk, evenk = MajoranaFunctions.groundstates(c, kitaev, paramsk)
     γplus, γminus = MajoranaFunctions.constructmajoranas(d, odd, even)
@@ -80,21 +84,24 @@ end
     Vz = 1e5w
     # fixed Δind
     Δind = Vz*cos(λ)
-    U = 5w
+    U = 20w
+    U_inter = 0
     μ = MajoranaFunctions.μguess(Δind, Vz, U)
     Φ = 0w
-    params = Dict(:μ=>μ, :w=>w, :λ=>λ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz) 
+    params = Dict(:μ=>μ, :w=>w, :λ=>λ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
     gap, mp, dρ = measures(d, localpairingham, params, sites)
     @test abs(gap) < 1e-5
     @test abs(mp) ≈ 1
+    @test dρ < 1e-8 
 
     # without fixed Δind
-    U = 10
+    U = 20
     params[:U] = U
     params[:μ], params[:Δind] = MajoranaFunctions.μΔind_init(λ, Vz, U)
     gap, mp, dρ = measures(d, localpairingham, params, sites)
     @test abs(gap) < 1e-5
     @test abs(mp) ≈ 1
+    @test dρ < 1e-8 
 end
 
 @testset "kitaevlimit" begin
@@ -103,6 +110,7 @@ end
     c = FermionBasis((1:sites), qn=QuantumDots.parity)
     t = 1.0 # Kitaev t
     ϵ = 0
+    U_k = 0
     points = 100
     Δ = collect(range(-2t, 2t, points)) # Kitaev Δ
     α = π/5
@@ -114,10 +122,11 @@ end
     μ = Vz*sin(2α)
     Φ = 0w
     U = 0w
+    U_inter = 0
     scan_params = Dict(:w=>w, :λ=>λ)
     scan_paramsk = Dict(:Δ=>Δ)
-    fix_params = Dict(:μ=>μ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz) 
-    fix_paramsk = Dict(:ϵ=>ϵ, :t=>t)
+    fix_params = Dict(:μ=>μ, :Δind=>Δind, :Φ=>Φ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
+    fix_paramsk = Dict(:ϵ=>ϵ, :t=>t, :U_k=>U_k)
     gap, mp, dρ = scan1d(scan_params, fix_params, d, localpairingham, points, sites)
     gapk, mpk, dρk = scan1d(scan_paramsk, fix_paramsk, c, kitaev, points, sites)
     @test isapprox(gap, gapk, atol=1e-3)
