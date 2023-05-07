@@ -1,6 +1,6 @@
 function lengthofparams(sites)
     return (μ=sites, Δind=sites, w=sites-1, λ=sites-1, Φ=sites, U=sites, U_inter=sites-1,
-            Vz=sites, ϵ=sites, Δ=sites, t=sites-1, U_k=sites-1)
+            Vz=sites, ϵ=sites, Δ=sites, t=sites-1, U_k=sites-1, θ=sites-1)
 end
 
 function convert_to_namedtuple(params, sites)
@@ -54,7 +54,7 @@ function localpairingham(particle_ops, params::Dict{Symbol, T}) where T
 end
 
 
-function kitaev(particle_ops, params::NamedTuple{S, NTuple{4, Vector{Float64}}}) where S
+function kitaev(particle_ops, params::NamedTuple{S, NTuple{5, Vector{Float64}}}) where S
     d = particle_ops
     sites = QuantumDots.nbr_of_fermions(d)
     p = params
@@ -62,11 +62,11 @@ function kitaev(particle_ops, params::NamedTuple{S, NTuple{4, Vector{Float64}}})
     Δ = p.Δ
     t = p.t
     U_k = p.U_k
+    θ = p.θ
     ham_dot = (ϵ[j]*numop(d, j) for j in 1:sites)
-    ham_tun = (t[j]*d[j+1]'d[j] for j in 1:sites-1)
+    ham_tun = (t[j]*exp(1im*θ[j])*d[j+1]'d[j] for j in 1:sites-1)
     ham_sc = (Δ[j]*d[j+1]'d[j]' for j in 1:sites-1)
     ham_int = (U_k[j]*interaction(d, j, j+1) for j in 1:sites-1)
-    # ham_int = (U_k[j]*d[j+1]'d[j+1]*d[j]'d[j] for j in 1:sites-1)
     ham = sum(ham_tun) + sum(ham_sc)
     ham += ham'
     ham += sum(ham_dot) + sum(ham_int)
@@ -159,11 +159,7 @@ function robustness(particle_ops, oddstate, evenstate, sites)
         keeplabels = tuple(keys(QuantumDots.cell(j, particle_ops))...)
         ρe, ρo = map(ψ -> QuantumDots.reduced_density_matrix(ψ, keeplabels, particle_ops),
                     (evenstate, oddstate))
-        # println("Even, site $j")
-        # display(round.(real.(ρe), digits=2))
-        # println("Odd, site $j")
-        # display(round.(real.(ρo), digits=2))
-        dρ += norm(ρe - ρo)^2
+        dρ += norm(ρe - ρo)
     end
     return dρ/sites
 end
