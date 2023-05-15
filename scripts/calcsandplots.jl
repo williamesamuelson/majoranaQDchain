@@ -60,8 +60,8 @@ function getoptrange(μinit, Δindinit, Vz, U_inter, U, w)
         dμ = 1.5w
     end
     dΔind = Vz + U_inter + U/2
-    # return [(0, Δindinit + dΔind), (μinit - dμ, μinit + dμ)]
-    return [(0, Δindinit + dΔind), (0, μinit + dμ)]
+    return [(0, Δindinit + dΔind), (μinit - dμ, μinit + dμ)]
+    # return [(0, Δindinit + dΔind), (0, μinit + dμ)]
 end
 
 function twodimscan(simparams; opt=true, maxtime=100)
@@ -146,11 +146,11 @@ function plottwodimscanlp(d; save=false)
     end
     if d["opt"]
         Δindss, μss = d["sspoint"]
-        scatter!(p, [Δindss], [μss], c=:cyan, markershape=:star5, markersize=12, label="Optimized")
+        scatter!(p, [Δindss], [μss], c=:cyan, markershape=:star5, markersize=12, label="Optimized sweet spot")
         println(d["ssLI"])
         println(d["ssgap"])
     end
-    scatter!(p, [Δindinit], [μinit], c=:red, label="Guess", markersize=6)
+    scatter!(p, [Δindinit], [μinit], c=:red, label=L"\mathrm{Sweet\ spot\ for\ }V_z \rightarrow \infty", markersize=6)
     # μinit0, Δindinit0 = MajoranaFunctions.μΔind_init(fix_params[:λ], fix_params[:Vz], 0)
     # scatter!(p, [Δindinit0], [μinit0], c=:black, label="Guess0")
     display(plot(p, xlabel=L"\Delta_\mathrm{ind}/w", ylabel=L"\mu/w",
@@ -167,9 +167,9 @@ end
 
 function calctwodimscankitaev(save=false)
     sites = 2
-    θ = 0
+    θ = rand(1)
     t = 1.0
-    U_k = 10t
+    U_k = 0t
     fix_params = Dict(:t=>t, :U_k=>U_k, :θ=>θ)
     scansyms = (:Δ, :ϵ)
     points = 200
@@ -178,8 +178,8 @@ function calctwodimscankitaev(save=false)
     optrange = [(0, dscan), (-dscan, dscan)]
     radius = U_k/2 + 1
     opt=true
-    # scanrange = tuple((collect(range(-dscan, dscan, points)) for i in 1:2)...)
-    scanrange = (collect(range(-radius - 1, radius+1, points)), collect(range(-U_k/2 - radius - 1, -U_k/2 + radius + 1, points)))
+    scanrange = tuple((collect(range(-dscan, dscan, points)) for i in 1:2)...)
+    # scanrange = (collect(range(-radius - 1, radius+1, points)), collect(range(-U_k/2 - radius - 1, -U_k/2 + radius + 1, points)))
     simparams = Dict("fix_params"=>fix_params, "sites"=>sites, "ham"=>kitaev, "points"=>points,
                     "scanrange"=>scanrange, "optrange"=>optrange, "init"=>init, "scansyms"=>scansyms, "opt"=>opt)
     res = twodimscan(simparams, opt=true, maxtime=20)
@@ -210,11 +210,12 @@ function plottwodimscankitaev(d; save=false)
     end
     if d["opt"]
         Δss, ϵss = d["sspoint"]
-        scatter!(p, [Δss], [ϵss], c=:cyan, markershape=:star5, markersize=12, label="Optimized")
+        scatter!(p, [Δss], [ϵss], c=:cyan, markershape=:star5, markersize=10, label="Optimized sweet spot")
         println(d["ssLI"])
         println(d["ssmp"])
     end
-    scatter!(p, [Δinit], [ϵinit], c=:red, label="Guess", markersize=6)
+    # scatter!(p, [Δinit], [ϵinit], c=:red, label="Guess", markersize=6)
+    # xticks = collect(-6.0:2:6.0)
     display(plot(p, xlabel=L"\Delta/t", ylabel=L"\epsilon/t",
                  colorbar_title="LD"))
     if save
@@ -249,9 +250,9 @@ function calcvaryingzeeman()
     Φ = 0w
     λ = π/4
     U = 100*w
-    U_inter = [0, 50]*w
+    U_inter = 0*w
     Vz = collect(10.0 .^ range(-1, 3, 10))
-    maxtime = 1000
+    maxtime = 1500
     simparams = Dict("w"=>w, "λ"=>λ, "Φ"=>Φ, "Vz"=>[Vz], "U"=>U, "U_inter"=>U_inter, "sites"=>sites)
     dicts = dict_list(simparams)
     for d in dicts
@@ -262,8 +263,8 @@ function calcvaryingzeeman()
 end
 
 function plotdρ()
-    files = [25, 24, 23]
-    # files = [22, 21, 20]
+    # files = [25, 24, 23]
+    files = [23, 20, 1]
     sims = readdir(datadir("sims"))[files]
     dict = wload(datadir("sims", sims[1]))
     Vz, λ = dict["Vz"], dict["λ"]
@@ -271,12 +272,12 @@ function plotdρ()
     p = plot()
     p2 = plot()
     shapes = [:circle, :star5, :diamond]
-    legs = ["No interactions", "Interdot & intradot"]
+    legs = ["Interdot & intradot", "Intradot", "No interactions"]
     for (j, sim) in enumerate(sims)
         dict = wload(datadir("sims", sim))
         dρ, U, U_inter, sites, gap = dict["dρ"], dict["U"], dict["U_inter"], dict["sites"], dict["gap"]
-        # plot!(p, Vz, dρ, label=legs[j], markershape=shapes[j])
-        plot!(p, Vz, dρ, label=L"N=%$sites", markershape=shapes[j])
+        plot!(p, Vz, dρ, label=legs[j], markershape=shapes[j])
+        # plot!(p, Vz, dρ, label=L"N=%$sites", markershape=shapes[j])
         plot!(p2, Vz, abs.(gap), label=L"N=%$sites")
     end
     xticks = collect(10.0 .^ range(-1, 3))
@@ -284,10 +285,10 @@ function plotdρ()
     xvec = range(Vz[4], Vz[end], 100)
     yvec = dict["w"] ./ xvec
     plot!(p, xvec, yvec, label=L"w/V_z")
-    # display(plot(p, xscale=:log10, yscale=:log10, grid=true, ylabel="LD", xlabel=L"V_z/w", dpi=300,
-    #              xticks=xticks, yticks=yticks, legend=true, legendposition=:bottomleft))
-    display(plot!(p2, xscale=:log10, yscale=:log10, title=L"λ/\pi=%$(λ/π)", ylabel=L"\delta\rho", xlabel=L"V_z/w"))
-    params = @strdict λ
+    display(plot(p, xscale=:log10, yscale=:log10, grid=true, ylabel="LD", xlabel=L"V_z/w", dpi=300,
+                 xticks=xticks, yticks=yticks, legend=true, legendposition=:bottomleft))
+    # display(plot!(p2, xscale=:log10, yscale=:log10, title=L"λ/\pi=%$(λ/π)", ylabel=L"\delta\rho", xlabel=L"V_z/w"))
+    params = @strdict λ 
     save = "LIsitesintrainter"*savename(params)
     # png(plotsdir("ssvarzeeman", save))
 end
@@ -387,16 +388,85 @@ function compkitaev1d()
     # png(plotsdir(save))
 end
 
+function compkitaev0d()
+    sites = 2
+    d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
+    c = FermionBasis((1:sites), qn=QuantumDots.parity)
+    t = 1.0 # Kitaev t
+    ϵ = 0
+    U_k = 0
+    points = 100
+    Δ = t
+    α = π/4/2
+    w, λ = MajoranaFunctions.kitaevtoakhmerovparams(t, Δ, α)
+    @assert all(w.*cos.(λ)*sin(2α) .≈ t) # check conversion
+    @assert all(w.*sin.(λ)*cos(2α) .≈ Δ)
+    Vz = [1, 1e1, 1e2, 1e3, 1e4, 1e5]
+    Δind = Vz.*cos(2α)
+    μ = Vz.*sin(2α)
+    Φ = 0w
+    U = 0w
+    U_inter = 0
+    paramsk = Dict(:ϵ=>ϵ, :t=>t, :Δ=>Δ, :U_k=>U_k, :θ=>0)
+    gapk, mpk, dρk = measures(c, kitaev, paramsk, sites)
+    dgap = zeros(length(Vz))
+    dLD = zeros(length(Vz))
+    for j in 1:length(Vz)
+        params = Dict(:μ=>μ[j], :w=>w, :λ=>λ, :Δind=>Δind[j], :Φ=>Φ, :U=>U, :Vz=>Vz[j], :U_inter=>U_inter)
+        gap, mp, dρ = measures(d, localpairingham, params, sites)
+        dgap[j] = abs(gap - gapk)
+        dLD[j] = abs(dρ - dρk)
+    end
+    # twin axis
+    p1 = plot(Vz, dgap, ylabel=L"|\delta E - \delta E_K|")
+    p2 = plot(Vz, dLD, ylabel=L"|\mathrm{LD} - \mathrm{LD}_K|")
+    initializeplot()
+    display(plot(p1, p2, layout=(1,2), yscale=:log10, xscale=:log10,xlabel=L"V_z", dpi=300))
+    params = @strdict sites α
+    save = "compkitaev"*savename(params)
+    # png(plotsdir(save))
+end
+
 function testphase()
-    sites = 3
+    sites = 2
     t = 1.0
     Δ = t
     ϵ = 0
     U_k = 0
-    θ = rand(2)
+    θ = rand(1)
     # θ = [0, pi]
     d = FermionBasis(1:sites, qn=QuantumDots.parity)
     params = Dict(:ϵ=>ϵ, :t=>t, :Δ=>Δ, :U_k=>U_k, :θ=>θ)
     gap, mp, dρ = measures(d, kitaev, params, sites)
+end
+
+kitaevt(p, dΦ) = √(p[:μ]^2 + p[:Vz]^2 - p[:Δind]^2*cos(dΦ))/(√(2)p[:Vz]) * cos(p[:λ])
+
+kitaevΔ(p, dΦ) = p[:Δind]/p[:Vz] * sin(p[:λ]) * cos(dΦ/2)
+
+
+function testphasetuning()
+    sites = 2
+    d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
+    λ = 0.99π/2
+    w = 1.0
+    Vz = 1e2w
+    U = 0w
+    α = 0.9*pi/2
+    μ = Vz*sin(α)
+    Δind = Vz*cos(α)
+    U_inter = 0
+    dΦ = collect(range(0,π,50))
+    gap = zeros(length(dΦ))
+    dρ = zeros(length(dΦ))
+    tvec = zeros(length(dΦ))
+    Δvec = zeros(length(dΦ))
+    for j in 1:length(dΦ)
+        params = Dict(:μ=>μ, :w=>w, :λ=>λ, :Δind=>Δind, :Φ=>[0,dΦ[j]], :U=>U, :Vz=>Vz, :U_inter=>U_inter)
+        tvec[j] = kitaevt(params, dΦ[j])
+        Δvec[j] = kitaevΔ(params, dΦ[j])
+    end
+    display(plot(dΦ, [tvec Δvec], labels=["t" "Delta"]))
+
 end
 end

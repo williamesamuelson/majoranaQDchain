@@ -113,7 +113,7 @@ function measures(particle_ops, ham_fun, params, sites)
     gap /= top_gap # normalize by topological gap
     mp = majoranapolarization(particle_ops, vecs[:,oddind], vecs[:,evenind], sites)
     dρ = robustness(particle_ops, vecs[:, oddind], vecs[:, evenind], sites)
-    return gap, mp, dρ
+    return gap, mp, dρ, top_gap
 end
 
 function majoranacoeffs(particle, oddstate, evenstate)
