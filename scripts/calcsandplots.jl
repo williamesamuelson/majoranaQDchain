@@ -328,23 +328,4 @@ function compkitaev1d()
     save = "compkitaev"*savename(params)
     # png(plotsdir(save))
 end
-
-function testopposite()
-    sites = 2
-    d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
-    w = 1.0
-    λ = pi/10
-    dΦ = pi
-    Φ = collect(range(0,(sites-1)*dΦ, sites))
-    U = 0w
-    U_inter = 0w
-    Vz = 1e3w
-    # μinit = Vz*sin(pi/2-λ)
-    μinit = Vz*cos(λ)
-    μ = [μinit, -μinit]
-    Δind = Vz*sin(λ)
-    params = Dict(:w=>w, :μ=>μ, :Δind=>Δind, :λ=>λ, :Φ=>Φ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
-    gap, mp, dρ = measures(d, localpairingham, params, sites)
-
-end
 end
