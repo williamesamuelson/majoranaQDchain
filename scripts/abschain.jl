@@ -6,6 +6,7 @@ using LinearAlgebra
 using Plots
 using MajoranaFunctions
 using Roots
+using LaTeXStrings
 
 function teqΔcondition(tsoq, Δind, Vz, μ0, ϕ)
     return abs(tsoq*(cos(ϕ/2) - 1im*μ0/Vz * sin(ϕ/2))) - Δind/Vz*sin(ϕ/2)
@@ -21,13 +22,12 @@ Vzmax(tsoq, Δind) = √(1+(tsoq)^2)/tsoq * Δind
 
 findμ0(Δind, Vz)= √(Vz^2 - Δind^2)
 
-function findparams(tsoq, Δind, Vz)
+function findμϕ(tsoq, Δind, Vz)
     μ0 = findμ0(Δind, Vz)
     μ = [μ0, -μ0]
-    ϕ = solve4phase(tsoq, Δind, Vz[j], μ0)
+    ϕ = solve4phase(tsoq, Δind, Vz, μ0)
     ϕvec = [0, ϕ]
-    params = Dict(:w=>t, :μ=>μ, :Δind=>Δind, :λ=>λ, :Φ=>ϕvec, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
-    return params
+    return μ, ϕvec 
 end
 
 function phasetuning()
@@ -37,17 +37,18 @@ function phasetuning()
     Δind = 1.0
     U = 0Δind
     U_inter = 0Δind
-    t = 1e-3Δind
+    t = 1e-2Δind
     tsoq = 0.2
     λ = atan(tsoq)
     Vzm = Vzmax(tsoq, Δind)
     Vz = collect(range(1, Vzm, points))*Δind
     LDs = zeros(points)
     for j in eachindex(Vz)
-        params = findparams(tsoq, Δind, Vz[j])
+        μ, ϕvec = findμϕ(tsoq, Δind, Vz[j])
+        params = Dict(:w=>t, :μ=>μ, :Δind=>Δind, :λ=>λ, :Φ=>ϕvec, :U=>U, :Vz=>Vz[j], :U_inter=>U_inter)
         deg, mp, LDs[j], gap = measures(d, localpairingham, params, sites)
     end
-    println(LDs)
+    display(plot(Vz, LDs, xlabel=L"$V_z/\Delta_\mathrm{ind}$", ylabel="LD"))
 end
 
 function scan2d()
@@ -57,24 +58,28 @@ function scan2d()
     Δind = 1.0
     U = 0Δind
     U_inter = 0Δind
-    t = 1e-1Δind
+    t = 2e-1Δind
     tsoq = 0.2
     λ = atan(tsoq)
-    Vz = 4Δind
+    Vz = Vzmax(tsoq, Δind)
     μ0 = findμ0(Δind, Vz)
-    ϕ = solve4phase(tsoq, Δind, Vz, μ0)
-    μvec = collect(range(-Vz, Vz, points))
-    params = Dict(:w=>t, :μ=>[0, 0], :Δind=>Δind, :λ=>λ, :Φ=>[0, ϕ], :U=>U, :Vz=>Vz, :U_inter=>U_inter)
+    ϕvec = [0, solve4phase(tsoq, Δind, Vz, μ0)]
+    μ1 = collect(range(μ0-t, μ0+t, points))
+    μ2 = -1*reverse(μ1)
+    params = Dict(:w=>t, :μ=>[0, 0], :Δind=>Δind, :λ=>λ, :Φ=>ϕvec, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
     LD = zeros(points, points)
     deg = zeros(points, points)
     for i in 1:points
         for j in 1:points
-            params[:μ] = [μvec[i], μvec[j]]
+            params[:μ] = [μ1[i], μ2[j]]
             deg[i,j], _, LD[i,j], _ = measures(d, localpairingham, params, sites)
         end
     end
-    display(heatmap(μvec, μvec, LD))
-
-
+    pdeg = heatmap(μ1, μ2, deg, c=:balance, clims=(-maximum(abs.(deg)), maximum(abs.(deg))))
+    scatter!(pdeg, [μ0], [-μ0])
+    pLD = heatmap(μ1, μ2, LD, c=:magma)
+    display(plot(pdeg, pLD, layout=(1,2)))
+    params[:μ] = [μ0, -μ0]
+    measures(d, localpairingham, params, sites)
 end
 end

@@ -155,14 +155,24 @@ end
 
 function robustness(particle_ops, oddstate, evenstate, sites)
     dρ = 0
-    for j in 1:sites
-        keeplabels = tuple(keys(QuantumDots.cell(j, particle_ops))...)
-        ρe, ρo = map(ψ -> QuantumDots.reduced_density_matrix(ψ, keeplabels, particle_ops),
+    for keeplabel in keys(particle_ops)
+        ρe, ρo = map(ψ -> QuantumDots.reduced_density_matrix(ψ, (keeplabel,), particle_ops),
                     (evenstate, oddstate))
         dρ += norm(ρe - ρo)
     end
     return dρ/sites
 end
+
+# function robustness(particle_ops, oddstate, evenstate, sites)
+#     dρ = 0
+#     for j in 1:sites
+#         keeplabels = tuple(keys(QuantumDots.cell(j, particle_ops))...)
+#         ρe, ρo = map(ψ -> QuantumDots.reduced_density_matrix(ψ, keeplabels, particle_ops),
+#                     (evenstate, oddstate))
+#         dρ += norm(ρe - ρo)
+#     end
+#     return dρ/sites
+# end
 
 function scan1d(scan_params, fix_params, particle_ops, ham_fun, points, sites)
     d = particle_ops
