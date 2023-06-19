@@ -30,25 +30,43 @@ function findμϕ(tsoq, Δind, Vz)
     return μ, ϕvec 
 end
 
-function phasetuning()
+function LDgapvsVz(params, Vzvec)
     sites = 2
-    points = 10
+    tsoq = tan(params[:λ])
     d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
+    LDs = zeros(length((Vzvec)))
+    gaps = zeros(length((Vzvec)))
+    for j in eachindex(Vzvec)
+        params[:Vz] = Vzvec[j]
+        params[:μ], params[:Φ] = findμϕ(tsoq, params[:Δind], Vzvec[j])
+        deg, mp, LDs[j], gaps[j] = measures(d, localpairingham, params, sites)
+    end
+    return LDs, gaps
+end
+
+function plotLDgapvsVz()
+    points = 10
     Δind = 1.0
     U = 0Δind
     U_inter = 0Δind
-    t = 1e-2Δind
+    t = [1e-3, 1e-2, 1e-1, 5e-1, 1]*Δind
     tsoq = 0.2
     λ = atan(tsoq)
     Vzm = Vzmax(tsoq, Δind)
     Vz = collect(range(1, Vzm, points))*Δind
-    LDs = zeros(points)
-    for j in eachindex(Vz)
-        μ, ϕvec = findμϕ(tsoq, Δind, Vz[j])
-        params = Dict(:w=>t, :μ=>μ, :Δind=>Δind, :λ=>λ, :Φ=>ϕvec, :U=>U, :Vz=>Vz[j], :U_inter=>U_inter)
-        deg, mp, LDs[j], gap = measures(d, localpairingham, params, sites)
+    pLD = plot(ylabel="LD")
+    pgap = plot(ylabel=L"$E_g/\Delta_\mathrm{ind}$", legend=false)
+    for j in eachindex(t)
+        params = Dict{Symbol, Any}(:w=>t[j], :Δind=>Δind, :λ=>λ, :U=>U, :U_inter=>U_inter)
+        LD, gap = LDgapvsVz(params, Vz)
+        plot!(pLD, Vz, LD, label=L"$t=%$(t[j])$")
+        plot!(pgap, Vz, gap)
     end
-    display(plot(Vz, LDs, xlabel=L"$V_z/\Delta_\mathrm{ind}$", ylabel="LD"))
+    params = @strdict U U_inter tsoq
+    save = "LDgapvsVz"*savename(params)
+    p = plot(pLD, pgap, layout=(1,2), yscale=:log10, xlabel=L"$V_z/\Delta_\mathrm{ind}$")
+    display(plot(p))
+    # png(plotsdir("fixDelta", save))
 end
 
 function scan2d()
@@ -58,28 +76,34 @@ function scan2d()
     Δind = 1.0
     U = 0Δind
     U_inter = 0Δind
-    t = 2e-1Δind
+    t = 5e-2Δind
     tsoq = 0.2
     λ = atan(tsoq)
     Vz = Vzmax(tsoq, Δind)
     μ0 = findμ0(Δind, Vz)
     ϕvec = [0, solve4phase(tsoq, Δind, Vz, μ0)]
-    μ1 = collect(range(μ0-t, μ0+t, points))
-    μ2 = -1*reverse(μ1)
-    params = Dict(:w=>t, :μ=>[0, 0], :Δind=>Δind, :λ=>λ, :Φ=>ϕvec, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
+    # μ1 = collect(range(μ0-2t, μ0+2t, points))
+    # μ2 = -1*reverse(μ1)
+    μ1 = collect(range(-Vz/2, Vz/2, points))
+    μ2 = μ1
+    params = Dict(:w=>t, :Δind=>Δind, :λ=>λ, :Φ=>ϕvec, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
     LD = zeros(points, points)
     deg = zeros(points, points)
     for i in 1:points
         for j in 1:points
-            params[:μ] = [μ1[i], μ2[j]]
+            params[:μ] = [μ2[i], μ1[j]]
             deg[i,j], _, LD[i,j], _ = measures(d, localpairingham, params, sites)
         end
     end
-    pdeg = heatmap(μ1, μ2, deg, c=:balance, clims=(-maximum(abs.(deg)), maximum(abs.(deg))))
-    scatter!(pdeg, [μ0], [-μ0])
-    pLD = heatmap(μ1, μ2, LD, c=:magma)
-    display(plot(pdeg, pLD, layout=(1,2)))
-    params[:μ] = [μ0, -μ0]
+    pdeg = heatmap(μ2, μ1, deg, c=:balance, clims=(-maximum(abs.(deg)), maximum(abs.(deg))),
+                  colorbartitle=L"$\delta E$")
+    scatter!(pdeg, [-μ0], [μ0], legend=false)
+    pLD = heatmap(μ2, μ1, LD, c=:magma, colorbartitle="LD")
+    display(plot(pdeg, pLD, layout=(1,2), xlabel=L"$\mu_2$", ylabel=L"$\mu_1$"))
+    params[:μ] = [-μ0, μ0]
     measures(d, localpairingham, params, sites)
+    params = @strdict Vz U U_inter t tsoq 
+    save = "scancrossingVzlow2"*savename(params)
+    # png(plotsdir("fixDelta", save))
 end
 end
