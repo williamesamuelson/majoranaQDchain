@@ -142,15 +142,19 @@ end
 
 function majoranapolarization(particle_ops, oddstate, evenstate, sites)
     n = sites÷2 + sites%2  # sum over half of the sites plus middle if odd
-    mp = 0
+    mp = 0.0
     for (label, op) in pairs(particle_ops.dict)
         if first(label) > n
             continue
         end
-        aplus, aminus, bplus, bminus = majoranacoeffs(particle_ops[label], oddstate, evenstate)
-        mp += aplus^2 + aminus^2 - bplus^2 - bminus^2
+        # aplus, aminus, bplus, bminus = majoranacoeffs(particle_ops[label], oddstate, evenstate)
+        # mp += aplus^2 + aminus^2 - bplus^2 - bminus^2
+        γplus = op + op'
+        γminus = 1im*(op - op')
+        mp += dot(evenstate, γplus, oddstate)^2
+        mp += dot(evenstate, γminus, oddstate)^2
     end
-    return mp
+    return abs(mp)
 end
 
 function robustness(particle_ops, oddstate, evenstate, sites)
