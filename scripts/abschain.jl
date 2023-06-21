@@ -94,44 +94,71 @@ function plotmeasuresvsVz(save=false)
     end
 end
 
-function scan2d(save=false)
+function scanchempotentials(params, points, μ1, μ2)
     sites = 2
-    points = 100
     d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
-    Δind = 1.0
-    par = false
-    U = 0Δind
-    U_inter = 0Δind
-    t = 1e-1Δind
-    tsoq = 0.2
-    λ = atan(tsoq)
-    Vz = 4
-    μ0 = findμ0(Δind, Vz)
-    ϕvec = [0, solve4phase(tsoq, Δind, Vz, μ0, par)]
-    μ1 = collect(range(μ0+U/2-2, μ0+U/2+1, points))
-    μ2 = -1*reverse(μ1)
-    # μ2 = μ1
-    params = Dict(:w=>t, :Δind=>Δind, :λ=>λ, :Φ=>ϕvec, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
     LD = zeros(points, points)
+    mp = zeros(points, points)
     deg = zeros(points, points)
     for i in 1:points
         for j in 1:points
             params[:μ] = [μ2[i], μ1[j]]
-            deg[i,j], _, LD[i,j], _ = measures(d, localpairingham, params, sites)
+            deg[i,j], mp[i,j], LD[i,j], _ = measures(d, localpairingham, params, sites)
         end
     end
+    return deg, mp, LD
+end
+
+function plotscanchempotentials(params, points, μ1, μ2, save=false)
+    deg, mp, LD = scanchempotentials(params, points, μ1, μ2)
     pdeg = heatmap(μ2, μ1, deg, c=:balance, clims=(-maximum(abs.(deg)), maximum(abs.(deg))),
-                  colorbartitle=L"$\delta E$")
-    # scatter!(pdeg, [-μ0], [μ0], legend=false)
-    pLD = heatmap(μ2, μ1, LD, c=:deep, colorbartitle="LD", clims=(0, maximum(LD)))
-    # scatter!(pLD, [-μ0], [μ0], legend=false)
-    display(plot(pdeg, pLD, layout=(1,2), xlabel=L"$\mu_2$", ylabel=L"$\mu_1$", dpi=300))
-    params[:μ] = [-μ0, μ0]
-    println(measures(d, localpairingham, params, sites))
-    if save
-        params = @strdict Vz U U_inter t tsoq par
-        filename = "scancrossingVzzoom"*savename(params)
-        png(plotsdir("fixDelta", filename))
+                   colorbartitle=L"$\delta E$", xlabel=L"$\mu_2$", ylabel=L"$\mu_1$", dpi=300)
+    display(plot(pdeg))
+    # if save
+    #     params = @strdict Vz U U_inter t tsoq ϕ
+    #     filename = "scancrossingboth"*savename(params)
+    #     png(plotsdir("fixDelta", filename))
+    # end
+end
+
+function main()
+    points = 100
+    par = false
+    Δind = 1.0
+    U = 0Δind
+    U_inter = 0Δind
+    t = 1e-1Δind
+    tsoq = 0.3
+    λ = atan(tsoq)
+    Vz = 3.3
+    μ0 = findμ0(Δind, Vz)
+    μ1 = collect(range(-μ0-1, μ0+1, points))
+    μ2 = μ1
+    ϕ = solve4phase(tsoq, Δind, Vz, μ0, par)
+    println(ϕ)
+    ϕvec = [0, ϕ]
+    params = Dict(:w=>t, :Δind=>Δind, :λ=>λ, :Φ=>ϕvec, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
+    plotscanchempotentials(params, points, μ1, μ2)
+end
+
+function animate()
+    points = 100
+    Δind = 1.0
+    U = 0Δind
+    U_inter = 0Δind
+    t = 2e-1Δind
+    tsoq = 0.3
+    λ = atan(tsoq)
+    Vz = 3.3
+    μ0 = findμ0(Δind, Vz)
+    μ1 = collect(range(-μ0-1, μ0+1, points))
+    μ2 = μ1
+    ϕvals = collect(range(0.2, pi, 30))
+    anim = @animate for ϕ in ϕvals
+        ϕvec = [0, ϕ]
+        params = Dict(:w=>t, :Δind=>Δind, :λ=>λ, :Φ=>ϕvec, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
+        plotscanchempotentials(params, points, μ1, μ2)
     end
+    gif(anim, plotsdir("fixDelta", "anim_ap.gif"), fps=5)
 end
 end

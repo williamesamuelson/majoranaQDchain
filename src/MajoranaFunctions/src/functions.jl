@@ -107,13 +107,13 @@ end
 
 function measures(particle_ops, ham_fun, params, sites)
     energies, vecs, oddind, evenind = handleblocks(particle_ops, ham_fun, params)
-    gap = energies[evenind] - energies[oddind]
+    deg = energies[oddind] - energies[evenind]
     sort!(energies)
     top_gap = energies[3] - energies[1]
-    gap /= top_gap # normalize by topological gap
+    deg /= top_gap # normalize by topological gap
     mp = majoranapolarization(particle_ops, vecs[:,oddind], vecs[:,evenind], sites)
-    dρ = robustness(particle_ops, vecs[:, oddind], vecs[:, evenind], sites)
-    return gap, mp, dρ, top_gap
+    LD = robustness(particle_ops, vecs[:, oddind], vecs[:, evenind], sites)
+    return deg, mp, LD, top_gap
 end
 
 function majoranacoeffs(particle, oddstate, evenstate)
