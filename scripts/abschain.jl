@@ -15,34 +15,45 @@ function initializeplot()
     scalefontsizes(1.3)
 end
 
-function teqΔcondition(tsoq, Δind, Vz, μ0, ϕ, par)
-    if par
-        return abs(μ0/Vz*cos(ϕ/2) + 1im*sin(ϕ/2)) - tsoq*Δind/Vz*cos(ϕ/2)
-    else
-        return abs(tsoq*(cos(ϕ/2) - 1im*μ0/Vz * sin(ϕ/2))) - Δind/Vz*sin(ϕ/2)
-    end
+findα(μ, Δind) = 1/2*atan.(μ./Δind)
+
+function kitaevtunneling(μ, Δind, Vz, ϕ)
+    α = findα(μ, Δind)
+    return abs(sin(α[2]+α[1])*cos(ϕ/2) + 1im*cos(α[2]-α[1])*sin(ϕ/2))
 end
 
-function solve4phase(tsoq, Δind, Vz, μ0, par)
-    f(ϕ) = teqΔcondition(tsoq, Δind, Vz, μ0, ϕ, par)
+function kitaevΔ(μ, tsoq, Δind, Vz, ϕ)
+    α = findα(μ, Δind)
+    return tsoq*abs(cos(α[2]+α[1])*cos(ϕ/2) + 1im*sin(α[2]-α[1])*sin(ϕ/2))
+end
+
+# function teqΔcondition(tsoq, Δind, Vz, μ0, ϕ, par)
+#     if par
+#         return abs(μ0/Vz*cos(ϕ/2) + 1im*sin(ϕ/2)) - tsoq*Δind/Vz*cos(ϕ/2)
+#     else
+#         return abs(tsoq*(cos(ϕ/2) - 1im*μ0/Vz * sin(ϕ/2))) - Δind/Vz*sin(ϕ/2)
+#     end
+# end
+
+function teqΔcondition(μ, tsoq, Δind, Vz, ϕ)
+    return kitaevtunneling(μ, Δind, Vz, ϕ) - kitaevΔ(μ, tsoq, Δind, Vz, ϕ)
+end
+
+function solve4phase(μ, tsoq, Δind, Vz)
+    f(ϕ) = teqΔcondition(μ, tsoq, Δind, Vz, ϕ)
     ϕres = find_zero(f, pi/2)
     return ϕres
 end
     
 Vzmax(tsoq, Δind, par) = par ? √(1+tsoq^2)*Δind : √(1+1/tsoq^2)*Δind
 
-findμ0(Δind, Vz)= √(Vz^2 - Δind^2)
+findμ0(Δind, Vz, U, par) = -U/2 .+ [1, (-1)^(Int(!par))]*√((Vz+U/2)^2 - Δind^2)
 
-function findμϕ(tsoq, Δind, Vz, par)
-    μ0 = findμ0(Δind, Vz)
-    if par
-        μ = [μ0, μ0]
-    else
-        μ = [μ0, -μ0]
-    end
-    ϕ = solve4phase(tsoq, Δind, Vz, μ0, par)
+function findμϕ(tsoq, Δind, Vz, U, par)
+    μ0 = findμ0(Δind, Vz, U, par)
+    ϕ = solve4phase(μ0, tsoq, Δind, Vz)
     ϕvec = [0, ϕ]
-    return μ, ϕvec 
+    return μ0, ϕvec 
 end
 
 function measuresvsVz(params, Vzvec, par)
@@ -55,7 +66,7 @@ function measuresvsVz(params, Vzvec, par)
     degs = zeros(length((Vzvec)))
     for j in eachindex(Vzvec)
         params[:Vz] = Vzvec[j]
-        params[:μ], params[:Φ] = findμϕ(tsoq, params[:Δind], Vzvec[j], par)
+        params[:μ], params[:Φ] = findμϕ(tsoq, params[:Δind], Vzvec[j], params[:U], par)
         degs[j], mps[j], LDs[j], gaps[j] = measures(d, localpairingham, params, sites)
     end
     return degs, mps, LDs, gaps
@@ -65,13 +76,13 @@ function plotmeasuresvsVz(save=false)
     points = 10
     par = false
     Δind = 1.0
-    U = 0Δind
+    U = 0.2Δind
     U_inter = 0Δind
     t = [1e-2, 1e-1, 5e-1, 1]*Δind
     tsoq = 0.2
     λ = atan(tsoq)
     Vzm = Vzmax(tsoq, Δind, par)
-    Vz = collect(range(1, Vzm, points))*Δind
+    Vz = collect(range(1, Vzm-U/2, points))*Δind
     initializeplot()
     pLD = plot(ylabel="LD")
     pgap = plot(ylabel=L"$E_g/\Delta_\mathrm{ind}$", legend=false)
@@ -113,7 +124,7 @@ function plotscanchempotentials(params, points, μ1, μ2, save=false)
     deg, mp, LD = scanchempotentials(params, points, μ1, μ2)
     pdeg = heatmap(μ2, μ1, deg, c=:balance, clims=(-maximum(abs.(deg)), maximum(abs.(deg))),
                    colorbartitle=L"$\delta E$", xlabel=L"$\mu_2$", ylabel=L"$\mu_1$", dpi=300)
-    display(plot(pdeg))
+    return plot(pdeg)
     # if save
     #     params = @strdict Vz U U_inter t tsoq ϕ
     #     filename = "scancrossingboth"*savename(params)
@@ -125,20 +136,21 @@ function main()
     points = 100
     par = false
     Δind = 1.0
-    U = 0Δind
-    U_inter = 0Δind
-    t = 1e-1Δind
-    tsoq = 0.3
+    U = 1
+    U_inter = 0
+    t = 5e-2
+    tsoq = 0.2
     λ = atan(tsoq)
-    Vz = 3.3
-    μ0 = findμ0(Δind, Vz)
-    μ1 = collect(range(-μ0-1, μ0+1, points))
-    μ2 = μ1
-    ϕ = solve4phase(tsoq, Δind, Vz, μ0, par)
-    println(ϕ)
+    Vz = Vzmax(tsoq, Δind, par) - U/2 + 0.01
+    μ0 = findμ0(Δind, Vz, U, par)
+    add = 0.005
+    μ1 = collect(range(μ0[1]-add, μ0[1]+add, points))
+    μ2 = collect(range(μ0[2]-add, μ0[2]+add, points))
+    ϕ = solve4phase(μ0, tsoq, Δind, Vz)
     ϕvec = [0, ϕ]
     params = Dict(:w=>t, :Δind=>Δind, :λ=>λ, :Φ=>ϕvec, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
-    plotscanchempotentials(params, points, μ1, μ2)
+    p = plotscanchempotentials(params, points, μ1, μ2)
+    display(plot(p))
 end
 
 function animate()
