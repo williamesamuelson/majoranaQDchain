@@ -521,7 +521,7 @@ uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 version = "0.5.10"
 
 [[deps.MajoranaFunctions]]
-deps = ["LinearAlgebra", "NLsolve", "QuantumDots", "Roots", "Test"]
+deps = ["BlackBoxOptim", "LinearAlgebra", "NLsolve", "QuantumDots", "Roots", "Test"]
 path = "src/MajoranaFunctions"
 uuid = "bb27fe77-b015-4b10-a214-8ec769d9e422"
 version = "0.1.0"

@@ -4,6 +4,7 @@ authors = ["williamesamuelson <william.samuelson@gmail.com>"]
 version = "0.1.0"
 
 [deps]
+BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 NLsolve = "2774e3e8-f4cf-5e23-947b-6d7e65073b56"
 QuantumDots = "312194fd-fec5-4b07-ba1c-a40d7013a56a"

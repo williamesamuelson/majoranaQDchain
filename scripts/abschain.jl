@@ -5,7 +5,6 @@ using QuantumDots
 using LinearAlgebra
 using Plots
 using MajoranaFunctions
-using Roots
 using LaTeXStrings
 
 function initializeplot()
@@ -14,40 +13,8 @@ function initializeplot()
     scalefontsizes()
     scalefontsizes(1.3)
 end
-
-findα(μ, Δind) = 1/2*atan.(μ./Δind)
-
-function kitaevtunneling(μ, Δind, Vz, ϕ)
-    α = findα(μ, Δind)
-    return abs(sin(α[2]+α[1])*cos(ϕ/2) + 1im*cos(α[2]-α[1])*sin(ϕ/2))
-end
-
-function kitaevΔ(μ, tsoq, Δind, Vz, ϕ)
-    α = findα(μ, Δind)
-    return tsoq*abs(cos(α[2]+α[1])*cos(ϕ/2) + 1im*sin(α[2]-α[1])*sin(ϕ/2))
-end
-
-# function teqΔcondition(tsoq, Δind, Vz, μ0, ϕ, par)
-#     if par
-#         return abs(μ0/Vz*cos(ϕ/2) + 1im*sin(ϕ/2)) - tsoq*Δind/Vz*cos(ϕ/2)
-#     else
-#         return abs(tsoq*(cos(ϕ/2) - 1im*μ0/Vz * sin(ϕ/2))) - Δind/Vz*sin(ϕ/2)
-#     end
-# end
-
-function teqΔcondition(μ, tsoq, Δind, Vz, ϕ)
-    return kitaevtunneling(μ, Δind, Vz, ϕ) - kitaevΔ(μ, tsoq, Δind, Vz, ϕ)
-end
-
-function solve4phase(μ, tsoq, Δind, Vz)
-    f(ϕ) = teqΔcondition(μ, tsoq, Δind, Vz, ϕ)
-    ϕres = find_zero(f, pi/2)
-    return ϕres
-end
     
 Vzmax(tsoq, Δind, par) = par ? √(1+tsoq^2)*Δind : √(1+1/tsoq^2)*Δind
-
-findμ0(Δind, Vz, U, par) = -U/2 .+ [1, (-1)^(Int(!par))]*√((Vz+U/2)^2 - Δind^2)
 
 function findμϕ(tsoq, Δind, Vz, U, par)
     μ0 = findμ0(Δind, Vz, U, par)
@@ -120,57 +87,37 @@ function scanchempotentials(params, points, μ1, μ2)
     return deg, mp, LD
 end
 
-function plotscanchempotentials(params, points, μ1, μ2, save=false)
+function plotscanchempotentials(params, points, μ1, μ2)
     deg, mp, LD = scanchempotentials(params, points, μ1, μ2)
     pdeg = heatmap(μ2, μ1, deg, c=:balance, clims=(-maximum(abs.(deg)), maximum(abs.(deg))),
                    colorbartitle=L"$\delta E$", xlabel=L"$\mu_2$", ylabel=L"$\mu_1$", dpi=300)
-    return plot(pdeg)
-    # if save
-    #     params = @strdict Vz U U_inter t tsoq ϕ
-    #     filename = "scancrossingboth"*savename(params)
-    #     png(plotsdir("fixDelta", filename))
-    # end
+    pmp = heatmap(μ2, μ1, mp, c=:acton,
+                   colorbartitle="MP", xlabel=L"$\mu_2$", ylabel=L"$\mu_1$", dpi=300)
+    return pdeg, pmp
 end
 
 function main()
     points = 100
     par = false
     Δind = 1.0
-    U = 1
-    U_inter = 0
+    U = 0.5
+    U_inter = 0.05
     t = 5e-2
     tsoq = 0.2
     λ = atan(tsoq)
-    Vz = Vzmax(tsoq, Δind, par) - U/2 + 0.01
+    Vz = 1.5
     μ0 = findμ0(Δind, Vz, U, par)
-    add = 0.005
-    μ1 = collect(range(μ0[1]-add, μ0[1]+add, points))
-    μ2 = collect(range(μ0[2]-add, μ0[2]+add, points))
-    ϕ = solve4phase(μ0, tsoq, Δind, Vz)
+    add = t + U/2
+    μ1vec = collect(range(μ0[1]-add, μ0[1]+add, points))
+    μ2vec = collect(range(μ0[2]-add, μ0[2]+add, points))
+    params = Dict{Symbol,Any}(:w=>t, :Δind=>Δind, :λ=>λ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
+    μ1, μ2, ϕ, meas = optimize_sweetspot(params, par, add, 30)
     ϕvec = [0, ϕ]
-    params = Dict(:w=>t, :Δind=>Δind, :λ=>λ, :Φ=>ϕvec, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
-    p = plotscanchempotentials(params, points, μ1, μ2)
-    display(plot(p))
-end
-
-function animate()
-    points = 100
-    Δind = 1.0
-    U = 0Δind
-    U_inter = 0Δind
-    t = 2e-1Δind
-    tsoq = 0.3
-    λ = atan(tsoq)
-    Vz = 3.3
-    μ0 = findμ0(Δind, Vz)
-    μ1 = collect(range(-μ0-1, μ0+1, points))
-    μ2 = μ1
-    ϕvals = collect(range(0.2, pi, 30))
-    anim = @animate for ϕ in ϕvals
-        ϕvec = [0, ϕ]
-        params = Dict(:w=>t, :Δind=>Δind, :λ=>λ, :Φ=>ϕvec, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
-        plotscanchempotentials(params, points, μ1, μ2)
-    end
-    gif(anim, plotsdir("fixDelta", "anim_ap.gif"), fps=5)
+    params[:Φ] = ϕvec
+    pdeg, pmp = plotscanchempotentials(params, points, μ1vec, μ2vec)
+    scatter!(pdeg, [μ2], [μ1])
+    scatter!(pmp, [μ2], [μ1])
+    display(plot(pdeg, pmp, layout=(1,2)))
+    println(meas)
 end
 end
