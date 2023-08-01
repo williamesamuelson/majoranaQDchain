@@ -111,13 +111,15 @@ function main()
     μ1vec = collect(range(μ0[1]-add, μ0[1]+add, points))
     μ2vec = collect(range(μ0[2]-add, μ0[2]+add, points))
     params = Dict{Symbol,Any}(:w=>t, :Δind=>Δind, :λ=>λ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
-    μ1, μ2, ϕ, meas = optimize_sweetspot(params, par, add, 30)
+    μ1, μ2, ϕ = optimize_sweetspot(params, par, add, 30)
     ϕvec = [0, ϕ]
     params[:Φ] = ϕvec
+    # μ1, μ2 = optimize_sweetspot(params, par, add, 30, fixϕ=true)
     pdeg, pmp = plotscanchempotentials(params, points, μ1vec, μ2vec)
-    scatter!(pdeg, [μ2], [μ1])
-    scatter!(pmp, [μ2], [μ1])
-    display(plot(pdeg, pmp, layout=(1,2)))
-    println(meas)
+    for p in (pdeg, pmp)
+        scatter!(p, [μ2], [μ1])
+        scatter!(p, [μ0[2]], [μ0[1]])
+    end
+    display(plot(pdeg, pmp, layout=(1,2), dpi=300))
 end
 end

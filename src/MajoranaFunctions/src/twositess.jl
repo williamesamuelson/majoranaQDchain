@@ -30,26 +30,28 @@ function init_optim(params, par)
     return [μ1, μ2, ϕ]
 end
 
-function create_optfunc(particle_ops, params)
+function create_optfunc(particle_ops, params, fixϕ=false)
     function optfunc(x)
         params[:μ] = [x[1], x[2]]
-        params[:Φ] = [0, x[3]]
+        if !fixϕ
+            params[:Φ] = [0, x[3]]
+        end
         deg, mp, _, _ = measures(particle_ops, localpairingham, params, 2)
         return deg^2 + 1-mp
     end
     return optfunc
 end
 
-function optimize_sweetspot(params, par, μadd, maxtime)
+function optimize_sweetspot(params, par, μadd, maxtime; fixϕ=false)
     particle_ops = FermionBasis((1:2), (:↑, :↓), qn=QuantumDots.parity) 
     init = init_optim(params, par)
     ranges = [((init[i] - μadd, init[i] + μadd) for i in 1:2)..., (0, pi)]
-    optfunc = create_optfunc(particle_ops, params)
+    if fixϕ
+        ranges = ranges[1:2]
+        init = init[1:2]
+    end
+    optfunc = create_optfunc(particle_ops, params, fixϕ)
     res = bboptimize(optfunc, init, SearchRange=ranges,
                     TraceMode=:compact, MaxTime=maxtime)
-    μ1, μ2, ϕ = best_candidate(res)
-    params[:μ] = [μ1, μ2]
-    params[:Φ] = [0, ϕ]
-    meas = measures(particle_ops, localpairingham, params, 2)
-    return μ1, μ2, ϕ, meas
+    return best_candidate(res)
 end
