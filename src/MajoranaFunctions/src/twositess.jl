@@ -26,7 +26,8 @@ function init_optim(params, par)
     tsoq = tan(params[:λ])
     μ1, μ2 = findμ0(params[:Δind], params[:Vz], params[:U], par)
     params[:μ] = [μ1, μ2]
-    ϕ = findϕ(params[:μ], tsoq, params[:Δind], params[:Vz])
+    # ϕ = findϕ(params[:μ], tsoq, params[:Δind], params[:Vz])
+    ϕ = pi/2
     return [μ1, μ2, ϕ]
 end
 
@@ -37,7 +38,7 @@ function create_optfunc(particle_ops, params, fixϕ=false)
             params[:Φ] = [0, x[3]]
         end
         deg, mp, _, _ = measures(particle_ops, localpairingham, params, 2)
-        return deg^2 + 1-mp
+        return 1e6*(abs(deg) - 1e-8)^2 + 1-mp
     end
     return optfunc
 end

@@ -18,12 +18,12 @@ Vzmax(tsoq, Δind, par) = par ? √(1+tsoq^2)*Δind : √(1+1/tsoq^2)*Δind
 
 function findμϕ(tsoq, Δind, Vz, U, par)
     μ0 = findμ0(Δind, Vz, U, par)
-    ϕ = solve4phase(μ0, tsoq, Δind, Vz)
+    ϕ = findϕ(μ0, tsoq, Δind, Vz)
     ϕvec = [0, ϕ]
     return μ0, ϕvec 
 end
 
-function measuresvsVz(params, Vzvec, par)
+function measuresvsVz(params, Vzvec, par, optimize=false)
     sites = 2
     tsoq = tan(params[:λ])
     d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
@@ -31,33 +31,39 @@ function measuresvsVz(params, Vzvec, par)
     gaps = zeros(length((Vzvec)))
     mps = zeros(length((Vzvec)))
     degs = zeros(length((Vzvec)))
+    add = params[:w] + params[:U]/2
     for j in eachindex(Vzvec)
         params[:Vz] = Vzvec[j]
-        params[:μ], params[:Φ] = findμϕ(tsoq, params[:Δind], Vzvec[j], params[:U], par)
+        if optimize
+            μ1, μ2, ϕ = optimize_sweetspot(params, par, add, 30)
+            params[:μ], params[:Φ] = [μ1, μ2], [0, ϕ]
+        else
+            params[:μ], params[:Φ] = findμϕ(tsoq, params[:Δind], Vzvec[j], params[:U], par)
+        end
         degs[j], mps[j], LDs[j], gaps[j] = measures(d, localpairingham, params, sites)
     end
     return degs, mps, LDs, gaps
 end
 
-function plotmeasuresvsVz(save=false)
-    points = 10
+function plotmeasuresvsVz(;optimize=false, save=false)
+    points = 20
     par = false
     Δind = 1.0
-    U = 0.2Δind
-    U_inter = 0Δind
-    t = [1e-2, 1e-1, 5e-1, 1]*Δind
+    U = 5
+    U_inter = 0
+    t = [1e-1]
     tsoq = 0.2
     λ = atan(tsoq)
     Vzm = Vzmax(tsoq, Δind, par)
-    Vz = collect(range(1, Vzm-U/2, points))*Δind
+    Vz = collect(range(0.1, Vzm, points))
     initializeplot()
     pLD = plot(ylabel="LD")
-    pgap = plot(ylabel=L"$E_g/\Delta_\mathrm{ind}$", legend=false)
+    pgap = plot(ylabel=L"$E_{gap}/\Delta_\mathrm{ind}$", legend=false)
     pmp = plot(ylabel="1-MP", legend=false)
     pdeg = plot(ylabel=L"\delta E", legend=false)
     for j in eachindex(t)
         params = Dict{Symbol, Any}(:w=>t[j], :Δind=>Δind, :λ=>λ, :U=>U, :U_inter=>U_inter)
-        deg, mp, LD, gap = measuresvsVz(params, Vz, par)
+        deg, mp, LD, gap = measuresvsVz(params, Vz, par, optimize)
         plot!(pLD, Vz, LD, label=L"$t=%$(t[j])$")
         plot!(pgap, Vz, gap)
         plot!(pmp, Vz, 1 .- mp)
@@ -80,7 +86,7 @@ function scanchempotentials(params, points, μ1, μ2)
     deg = zeros(points, points)
     for i in 1:points
         for j in 1:points
-            params[:μ] = [μ2[i], μ1[j]]
+            params[:μ] = [μ1[i], μ2[j]]
             deg[i,j], mp[i,j], LD[i,j], _ = measures(d, localpairingham, params, sites)
         end
     end
@@ -100,26 +106,32 @@ function main()
     points = 100
     par = false
     Δind = 1.0
-    U = 0.5
-    U_inter = 0.05
-    t = 5e-2
+    U = 1
+    U_inter = 0
+    t = 1e-1
     tsoq = 0.2
     λ = atan(tsoq)
-    Vz = 1.5
+    # Vz = Vzmax(tsoq, Δind, par) - U/2 
+    Vz = 1
     μ0 = findμ0(Δind, Vz, U, par)
-    add = t + U/2
-    μ1vec = collect(range(μ0[1]-add, μ0[1]+add, points))
-    μ2vec = collect(range(μ0[2]-add, μ0[2]+add, points))
+    add = t+U/2
     params = Dict{Symbol,Any}(:w=>t, :Δind=>Δind, :λ=>λ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
-    μ1, μ2, ϕ = optimize_sweetspot(params, par, add, 30)
+    μ1, μ2, ϕ = optimize_sweetspot(params, par, add, 10)
     ϕvec = [0, ϕ]
     params[:Φ] = ϕvec
     # μ1, μ2 = optimize_sweetspot(params, par, add, 30, fixϕ=true)
+    # μ1vec = collect(range(μ0[1]-add, μ0[1]+add, points))
+    # μ2vec = collect(range(μ0[2]-add, μ0[2]+add, points))
+    add2 = add + U
+    add3 = add + U/2
+    μ1vec = collect(range(μ1-add3, μ1+add2, points))
+    μ2vec = collect(range(μ2-add3, -μ2+add2, points))
     pdeg, pmp = plotscanchempotentials(params, points, μ1vec, μ2vec)
     for p in (pdeg, pmp)
         scatter!(p, [μ2], [μ1])
         scatter!(p, [μ0[2]], [μ0[1]])
     end
     display(plot(pdeg, pmp, layout=(1,2), dpi=300))
+    println(Vz)
 end
 end
