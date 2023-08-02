@@ -9,7 +9,7 @@ using LaTeXStrings
 
 function initializeplot()
 	plot_font = "Computer Modern"
-	default(fontfamily=plot_font, linewidth=2, framestyle=:box, grid=true, markersize=6, legendfontsize=12)
+	default(fontfamily=plot_font, linewidth=2, framestyle=:box, grid=true, markersize=4, legendfontsize=12)
     scalefontsizes()
     scalefontsizes(1.3)
 end
@@ -95,10 +95,11 @@ end
 
 function plotscanchempotentials(params, points, μ1, μ2)
     deg, mp, LD = scanchempotentials(params, points, μ1, μ2)
+    initializeplot() 
     pdeg = heatmap(μ2, μ1, deg, c=:balance, clims=(-maximum(abs.(deg)), maximum(abs.(deg))),
-                   colorbartitle=L"$\delta E$", xlabel=L"$\mu_2$", ylabel=L"$\mu_1$", dpi=300)
+                   colorbartitle=L"$\delta E$", xlabel=L"$\mu_2$", ylabel=L"$\mu_1$")
     pmp = heatmap(μ2, μ1, mp, c=:acton,
-                   colorbartitle="MP", xlabel=L"$\mu_2$", ylabel=L"$\mu_1$", dpi=300)
+                   colorbartitle="MP", xlabel=L"$\mu_2$", ylabel=L"$\mu_1$")
     return pdeg, pmp
 end
 
@@ -108,28 +109,25 @@ function main()
     Δind = 1.0
     U = 1
     U_inter = 0
-    t = 1e-1
+    t = 1e-2
     tsoq = 0.2
     λ = atan(tsoq)
     # Vz = Vzmax(tsoq, Δind, par) - U/2 
-    Vz = 1
+    Vz = 0.6
     μ0 = findμ0(Δind, Vz, U, par)
-    add = t+U/2
+    add = t+Vz
     params = Dict{Symbol,Any}(:w=>t, :Δind=>Δind, :λ=>λ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
-    μ1, μ2, ϕ = optimize_sweetspot(params, par, add, 10)
+    μ1, μ2, ϕ = optimize_sweetspot(params, par, add, 60)
     ϕvec = [0, ϕ]
     params[:Φ] = ϕvec
     # μ1, μ2 = optimize_sweetspot(params, par, add, 30, fixϕ=true)
-    # μ1vec = collect(range(μ0[1]-add, μ0[1]+add, points))
-    # μ2vec = collect(range(μ0[2]-add, μ0[2]+add, points))
-    add2 = add + U
-    add3 = add + U/2
-    μ1vec = collect(range(μ1-add3, μ1+add2, points))
-    μ2vec = collect(range(μ2-add3, -μ2+add2, points))
+    add = t
+    μ1vec = collect(range(μ1-add, μ1+add, points))
+    μ2vec = collect(range(μ2-add, μ2+add, points))
     pdeg, pmp = plotscanchempotentials(params, points, μ1vec, μ2vec)
     for p in (pdeg, pmp)
-        scatter!(p, [μ2], [μ1])
-        scatter!(p, [μ0[2]], [μ0[1]])
+        scatter!(p, [μ2], [μ1], label="Optimized")
+        # scatter!(p, [μ0[2]], [μ0[1]], label="Guess")
     end
     display(plot(pdeg, pmp, layout=(1,2), dpi=300))
     println(Vz)
