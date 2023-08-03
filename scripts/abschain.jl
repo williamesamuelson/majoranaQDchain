@@ -46,25 +46,25 @@ function measuresvsVz(params, Vzvec, par, optimize=false)
 end
 
 function plotmeasuresvsVz(;optimize=false, save=false)
-    points = 20
+    points = 10
     par = false
     Δind = 1.0
-    U = 5
-    U_inter = 0
-    t = [1e-1]
+    U = 1
+    U_inter = [0, 0.01, 0.05, 0.1]
+    t = 1e-2
     tsoq = 0.2
     λ = atan(tsoq)
     Vzm = Vzmax(tsoq, Δind, par)
-    Vz = collect(range(0.1, Vzm, points))
+    Vz = collect(range(0.55, Vzm - U/2, points))
     initializeplot()
     pLD = plot(ylabel="LD")
     pgap = plot(ylabel=L"$E_{gap}/\Delta_\mathrm{ind}$", legend=false)
     pmp = plot(ylabel="1-MP", legend=false)
     pdeg = plot(ylabel=L"\delta E", legend=false)
-    for j in eachindex(t)
-        params = Dict{Symbol, Any}(:w=>t[j], :Δind=>Δind, :λ=>λ, :U=>U, :U_inter=>U_inter)
+    for j in eachindex(U_inter)
+        params = Dict{Symbol, Any}(:w=>t, :Δind=>Δind, :λ=>λ, :U=>U, :U_inter=>U_inter[j])
         deg, mp, LD, gap = measuresvsVz(params, Vz, par, optimize)
-        plot!(pLD, Vz, LD, label=L"$t=%$(t[j])$")
+        plot!(pLD, Vz, LD, label=L"$V=%$(U_inter[j])$")
         plot!(pgap, Vz, gap)
         plot!(pmp, Vz, 1 .- mp)
         plot!(pdeg, Vz, abs.(deg))
@@ -107,27 +107,26 @@ function main()
     points = 100
     par = false
     Δind = 1.0
-    U = 1
-    U_inter = 0
+    U = 2
+    U_inter = 0.1
     t = 1e-2
     tsoq = 0.2
     λ = atan(tsoq)
     # Vz = Vzmax(tsoq, Δind, par) - U/2 
-    Vz = 0.6
+    Vz = 0.1
     μ0 = findμ0(Δind, Vz, U, par)
-    add = t+Vz
+    add = t + U_inter
     params = Dict{Symbol,Any}(:w=>t, :Δind=>Δind, :λ=>λ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
-    μ1, μ2, ϕ = optimize_sweetspot(params, par, add, 60)
+    μ1, μ2, ϕ = optimize_sweetspot(params, par, add, 30)
     ϕvec = [0, ϕ]
     params[:Φ] = ϕvec
-    # μ1, μ2 = optimize_sweetspot(params, par, add, 30, fixϕ=true)
-    add = t
+    # add =
     μ1vec = collect(range(μ1-add, μ1+add, points))
     μ2vec = collect(range(μ2-add, μ2+add, points))
     pdeg, pmp = plotscanchempotentials(params, points, μ1vec, μ2vec)
     for p in (pdeg, pmp)
         scatter!(p, [μ2], [μ1], label="Optimized")
-        # scatter!(p, [μ0[2]], [μ0[1]], label="Guess")
+        scatter!(p, [μ0[2]], [μ0[1]], label="Guess")
     end
     display(plot(pdeg, pmp, layout=(1,2), dpi=300))
     println(Vz)
