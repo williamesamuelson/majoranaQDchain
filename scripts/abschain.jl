@@ -103,17 +103,39 @@ function plotscanchempotentials(params, points, μ1, μ2)
     return pdeg, pmp
 end
 
+function plottvsΔ()
+    points = 100
+    par = false
+    Δind = 1.0
+    U = 0
+    U_inter = 0
+    t = 0.2
+    tsoq = 0.2
+    λ = atan(tsoq)
+    Vz = 4
+    μ = findμ0(Δind, Vz, U, par)
+    tK = zeros(points)
+    ΔK = zeros(points)
+    ϕvec = range(0, pi, points)
+    for (j, ϕ) in enumerate(ϕvec)
+        tK[j] = MajoranaFunctions.kitaevtunneling(μ, Δind, Vz, ϕ)
+        ΔK[j] = MajoranaFunctions.kitaevΔ(μ, tsoq, Δind, Vz, ϕ)
+    end
+    initializeplot()
+    display(plot(ϕvec, [tK ΔK]))
+end
+
 function main()
     d = FermionBasis((1:2), (:↑, :↓), qn=QuantumDots.parity)
     points = 100
     par = false
     Δind = 1.0
-    U = 2
-    U_inter = 0.4
+    U = 0
+    U_inter = 0
     t = 0.2
-    tsoq = 0.2
+    tsoq = 0.5
     λ = atan(tsoq)
-    Vz = 0.4
+    Vz = 2
     μ0 = findμ0(Δind, Vz, U, par)
     add = t + U_inter
     params = Dict{Symbol,Any}(:w=>t, :Δind=>Δind, :λ=>λ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
