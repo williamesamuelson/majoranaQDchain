@@ -18,6 +18,8 @@ end
 
 numop(particle_ops, label) = particle_ops[label]'*particle_ops[label]
 
+totnumop(particle_ops, site) = numop(particle_ops, (site, :↑)) + numop(particle_ops, (site, :↓))
+
 interaction(particle_ops, label1, label2) = numop(particle_ops, label1)*numop(particle_ops, label2)
 
 η(spin) = spin == :↑ ? -1 : 1
@@ -34,9 +36,9 @@ function localpairingham(particle_ops, params::NamedTuple{S, NTuple{8, Vector{Fl
     U = p.U
     U_inter = p.U_inter
     Vz = p.Vz
-    single = ((μ[j] - η(σ)*Vz[j])*numop(d, (j,σ)) for j in 1:sites, σ in (:↑, :↓))
+    single = ((μ[j] + η(σ)*Vz[j])*numop(d, (j,σ)) for j in 1:sites, σ in (:↑, :↓))
     intra = (U[j]*interaction(d, (j,:↑), (j,:↓)) for j in 1:sites)
-    inter = (U_inter[j]*(numop(d,(j,:↑)) + numop(d,(j,:↓)))*(numop(d,(j+1,:↑)) + numop(d,(j+1,:↓))) for j in 1:sites-1)
+    inter = (U_inter[j] * totnumop(d, j) * totnumop(d, j+1) for j in 1:sites-1)
     tun_normal = (w[j]*cos(λ[j])*d[j, σ]'d[j+1, σ] for j in 1:sites-1, σ in (:↑, :↓))
     tun_flip = (w[j]*sin(λ[j])*(d[j, :↓]'d[j+1, :↑] - d[j, :↑]'d[j+1, :↓]) for j in 1:sites-1) 
     sc = (Δind[j]*exp(1im*Φ[j])*d[j, :↑]'d[j, :↓]' for j in 1:sites)

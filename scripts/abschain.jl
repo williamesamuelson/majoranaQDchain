@@ -49,13 +49,13 @@ function plotmeasuresvsVz(;optimize=false, save=false)
     points = 10
     par = false
     Δind = 1.0
-    U = 1
+    U = 2
     U_inter = [0, 0.01, 0.05, 0.1]
     t = 1e-2
     tsoq = 0.2
     λ = atan(tsoq)
     Vzm = Vzmax(tsoq, Δind, par)
-    Vz = collect(range(0.55, Vzm - U/2, points))
+    Vz = collect(range(0.01, Vzm - U/2, points))
     initializeplot()
     pLD = plot(ylabel="LD")
     pgap = plot(ylabel=L"$E_{gap}/\Delta_\mathrm{ind}$", legend=false)
@@ -104,23 +104,21 @@ function plotscanchempotentials(params, points, μ1, μ2)
 end
 
 function main()
+    d = FermionBasis((1:2), (:↑, :↓), qn=QuantumDots.parity)
     points = 100
     par = false
     Δind = 1.0
     U = 2
-    U_inter = 0.1
-    t = 1e-2
+    U_inter = 0.4
+    t = 0.2
     tsoq = 0.2
     λ = atan(tsoq)
-    # Vz = Vzmax(tsoq, Δind, par) - U/2 
-    Vz = 0.1
+    Vz = 0.4
     μ0 = findμ0(Δind, Vz, U, par)
     add = t + U_inter
     params = Dict{Symbol,Any}(:w=>t, :Δind=>Δind, :λ=>λ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
     μ1, μ2, ϕ = optimize_sweetspot(params, par, add, 30)
-    ϕvec = [0, ϕ]
-    params[:Φ] = ϕvec
-    # add =
+    deg, mp, LD, gap = measures(d, localpairingham, params, 2)
     μ1vec = collect(range(μ1-add, μ1+add, points))
     μ2vec = collect(range(μ2-add, μ2+add, points))
     pdeg, pmp = plotscanchempotentials(params, points, μ1vec, μ2vec)
@@ -129,6 +127,6 @@ function main()
         scatter!(p, [μ0[2]], [μ0[1]], label="Guess")
     end
     display(plot(pdeg, pmp, layout=(1,2), dpi=300))
-    println(Vz)
+    println(mp)
 end
 end
