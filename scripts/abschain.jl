@@ -125,17 +125,41 @@ function plottvsΔ()
     display(plot(ϕvec, [tK ΔK]))
 end
 
+function now()
+    d = FermionBasis((1:2), (:↑, :↓), qn=QuantumDots.parity)
+    par = false
+    Δind = 1.0
+    points = 10
+    Uvec = collect(range(0, 8, points))
+    U_inter = 0
+    t = 0.2
+    tsoq = 0.2
+    λ = atan(tsoq)
+    Vz = 1
+    add = t + U_inter
+    ϕres = zeros(points)
+    mp = zeros(points)
+    for (j, U) in enumerate(Uvec)
+        μ0 = findμ0(Δind, Vz, U, par)
+        params = Dict{Symbol,Any}(:w=>t, :Δind=>Δind, :λ=>λ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
+        _, _, ϕres[j] = optimize_sweetspot(params, par, add, 30)
+        _, mp[j], _, _ = measures(d, localpairingham, params, 2)
+    end
+    plot(Uvec, ϕres./pi, label=L"$\phi/\pi$", xlabel="U")
+    display(plot!(twinx(), Uvec, mp, labels="MP", c=:red))
+end
+
 function main()
     d = FermionBasis((1:2), (:↑, :↓), qn=QuantumDots.parity)
     points = 100
     par = false
     Δind = 1.0
-    U = 0
+    U = 6
     U_inter = 0
     t = 0.2
-    tsoq = 0.5
+    tsoq = 0.2
     λ = atan(tsoq)
-    Vz = 2
+    Vz = 1
     μ0 = findμ0(Δind, Vz, U, par)
     add = t + U_inter
     params = Dict{Symbol,Any}(:w=>t, :Δind=>Δind, :λ=>λ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
