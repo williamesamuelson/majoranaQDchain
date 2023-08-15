@@ -56,3 +56,7 @@ function optimize_sweetspot(params, par, μadd, maxtime; fixϕ=false)
                     TraceMode=:compact, MaxTime=maxtime)
     return best_candidate(res)
 end
+
+β(μ, Δind) = √(μ^2 + Δind^2)
+
+acoeffs(μ, Δind, Vz) = [√(β(μ, Δind) + μ), √(β(μ, Δind) - μ)]/.√(2*β(μ, Δind)) 

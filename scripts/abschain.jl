@@ -49,22 +49,22 @@ function plotmeasuresvsVz(;optimize=false, save=false)
     points = 10
     par = false
     Δind = 1.0
-    U = 2
-    U_inter = [0, 0.01, 0.05, 0.1]
-    t = 1e-2
+    U = 0
+    U_inter = 0
+    t = [1e-2]
     tsoq = 0.2
     λ = atan(tsoq)
     Vzm = Vzmax(tsoq, Δind, par)
-    Vz = collect(range(0.01, Vzm - U/2, points))
+    Vzvec = collect(range(0.01, Vzm - U/2, points))
     initializeplot()
     pLD = plot(ylabel="LD")
     pgap = plot(ylabel=L"$E_{gap}/\Delta_\mathrm{ind}$", legend=false)
     pmp = plot(ylabel="1-MP", legend=false)
     pdeg = plot(ylabel=L"\delta E", legend=false)
-    for j in eachindex(U_inter)
-        params = Dict{Symbol, Any}(:w=>t, :Δind=>Δind, :λ=>λ, :U=>U, :U_inter=>U_inter[j])
+    for j in eachindex(t)
+        params = Dict{Symbol, Any}(:w=>t[j], :Δind=>Δind, :λ=>λ, :U=>U, :U_inter=>U_inter)
         deg, mp, LD, gap = measuresvsVz(params, Vz, par, optimize)
-        plot!(pLD, Vz, LD, label=L"$V=%$(U_inter[j])$")
+        plot!(pLD, Vz, LD)
         plot!(pgap, Vz, gap)
         plot!(pmp, Vz, 1 .- mp)
         plot!(pdeg, Vz, abs.(deg))
@@ -130,23 +130,21 @@ function now()
     par = false
     Δind = 1.0
     points = 10
-    Uvec = collect(range(0, 8, points))
+    U = 0
     U_inter = 0
     t = 0.2
     tsoq = 0.2
     λ = atan(tsoq)
-    Vz = 1
+    Vzvec = collect(range(1, 5, points))
     add = t + U_inter
-    ϕres = zeros(points)
-    mp = zeros(points)
-    for (j, U) in enumerate(Uvec)
+    coeffres = zeros(points, 2)
+    for (j, Vz) in enumerate(Vzvec)
         μ0 = findμ0(Δind, Vz, U, par)
         params = Dict{Symbol,Any}(:w=>t, :Δind=>Δind, :λ=>λ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
-        _, _, ϕres[j] = optimize_sweetspot(params, par, add, 30)
-        _, mp[j], _, _ = measures(d, localpairingham, params, 2)
+        optimize_sweetspot(params, par, add, 10)
+        coeffres[j, :] = MajoranaFunctions.acoeffs(params[:μ][2], Δind, Vz)
     end
-    plot(Uvec, ϕres./pi, label=L"$\phi/\pi$", xlabel="U")
-    display(plot!(twinx(), Uvec, mp, labels="MP", c=:red))
+    return Vzvec, coeffres
 end
 
 function main()
