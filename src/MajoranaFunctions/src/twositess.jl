@@ -20,7 +20,7 @@ function findϕ(μ, tsoq, Δind, Vz)
     return ϕres
 end
 
-findμ0(Δind, Vz, U, par) = -U/2 .+ [1, (-1)^(Int(!par))]*√((Vz+U/2)^2 - Δind^2)
+findμ0(Δind, Vz, U, par) = Vz + U/2 < Δind ? [1, (-1)^(Int(!par))] : -U/2 .+ [1, (-1)^(Int(!par))]*√((Vz+U/2)^2 - Δind^2)
 
 function init_optim(params, par)
     tsoq = tan(params[:λ])

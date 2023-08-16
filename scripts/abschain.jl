@@ -125,26 +125,27 @@ function plottvsΔ()
     display(plot(ϕvec, [tK ΔK]))
 end
 
-function now()
+function VzUheatmap(Vzvec, Uvec)
     d = FermionBasis((1:2), (:↑, :↓), qn=QuantumDots.parity)
     par = false
     Δind = 1.0
-    points = 10
-    U = 0
     U_inter = 0
     t = 0.2
     tsoq = 0.2
     λ = atan(tsoq)
-    Vzvec = collect(range(1, 5, points))
-    add = t + U_inter
-    coeffres = zeros(points, 2)
+    addvec = t .+ Uvec/2
+    mps = zeros(length(Uvec), length(Vzvec))
+    ϕs = zeros(length(Uvec), length(Vzvec))
     for (j, Vz) in enumerate(Vzvec)
-        μ0 = findμ0(Δind, Vz, U, par)
-        params = Dict{Symbol,Any}(:w=>t, :Δind=>Δind, :λ=>λ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
-        optimize_sweetspot(params, par, add, 10)
-        coeffres[j, :] = MajoranaFunctions.acoeffs(params[:μ][2], Δind, Vz)
+        for (k, U) in enumerate(Uvec)
+            μ0 = findμ0(Δind, Vz, U, par)
+            params = Dict{Symbol,Any}(:w=>t, :Δind=>Δind, :λ=>λ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
+            optimize_sweetspot(params, par, addvec[k], 20)
+            ϕs[j, k] = params[:Φ][2]
+            _, mps[j,k], _, _ = measures(d, localpairingham, params, 2)
+        end
     end
-    return Vzvec, coeffres
+    return mps, ϕs
 end
 
 function main()
@@ -157,9 +158,9 @@ function main()
     t = 0.2
     tsoq = 0.2
     λ = atan(tsoq)
-    Vz = 1
+    Vz = 0.5
     μ0 = findμ0(Δind, Vz, U, par)
-    add = t + U_inter
+    add = 10t + U_inter
     params = Dict{Symbol,Any}(:w=>t, :Δind=>Δind, :λ=>λ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
     μ1, μ2, ϕ = optimize_sweetspot(params, par, add, 30)
     deg, mp, LD, gap = measures(d, localpairingham, params, 2)
