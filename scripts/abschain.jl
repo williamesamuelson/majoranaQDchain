@@ -148,19 +148,19 @@ function VzUheatmap(Vzvec, Uvec)
     return mps, ϕs
 end
 
-function main()
+function scan()
     d = FermionBasis((1:2), (:↑, :↓), qn=QuantumDots.parity)
     points = 100
     par = false
     Δind = 1.0
-    U = 6
+    U = 0
     U_inter = 0
     t = 0.2
     tsoq = 0.2
     λ = atan(tsoq)
-    Vz = 0.5
+    Vz = 1.5
     μ0 = findμ0(Δind, Vz, U, par)
-    add = 10t + U_inter
+    add = 1t + U_inter
     params = Dict{Symbol,Any}(:w=>t, :Δind=>Δind, :λ=>λ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
     μ1, μ2, ϕ = optimize_sweetspot(params, par, add, 30)
     deg, mp, LD, gap = measures(d, localpairingham, params, 2)
@@ -173,5 +173,28 @@ function main()
     end
     display(plot(pdeg, pmp, layout=(1,2), dpi=300))
     println(mp)
+end
+
+function main()
+    d = FermionBasis((1:2), (:↑, :↓), qn=QuantumDots.parity)
+    par = false
+    Δind = 1.0
+    U = 0
+    U_inter = 0
+    t = 0.1
+    tsoq = 0.2
+    λ = atan(tsoq)
+    Vz = 4
+    μ0 = findμ0(Δind, Vz, U, par)
+    params = Dict{Symbol,Any}(:w=>t, :Δind=>Δind, :λ=>λ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
+    add = t
+    optimize_sweetspot(params, par, add, 10)
+    odd, even = MajoranaFunctions.groundstates(d, localpairingham, params)
+    γplus, γminus = MajoranaFunctions.majoranawavefcn(d, odd, even)
+    return γplus, γminus
+end
+
+function plotmajoranawavefcn(wavefcn)
+
 end
 end

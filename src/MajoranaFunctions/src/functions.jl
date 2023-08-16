@@ -129,6 +129,19 @@ function majoranacoeffs(particle, oddstate, evenstate)
     return aplus, aminus, bplus, bminus
 end
 
+function majoranawavefcn(particle_ops, oddstate, evenstate)
+    γplus = Dict()
+    γminus = Dict()
+    for (j, (label, op)) in enumerate(pairs(particle_ops.dict))
+        γjk_plus = op' + op
+        γjk_minus = 1im*(op'-op)
+        ap, am, bp, bm = majoranacoeffs(particle_ops[label], oddstate, evenstate)
+        γplus[label] = [ap, am]
+        γminus[label] = [bp, bm]
+    end
+    return γplus, γminus
+end
+
 function constructmajoranas(particle_ops, oddstate, evenstate)
     γplus = 0*first(particle_ops.dict)
     γminus = copy(γplus)
