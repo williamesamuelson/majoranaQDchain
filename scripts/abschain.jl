@@ -197,4 +197,5 @@ end
 function plotmajoranawavefcn(wavefcn)
 
 end
+
 end

@@ -82,7 +82,7 @@ function twodimscan(simparams; opt=true, maxtime=100)
     end
     xparams = Dict(scansyms[1]=>scanrange[1])
     yparams = Dict(scansyms[2]=>scanrange[2])
-    @time gap, mp, dρ = scan2d(xparams, yparams, fix_params, d, ham, points, sites)
+    @time gap, mp, dρ = MajoranaFunctions.scan2d(xparams, yparams, fix_params, d, ham, points, sites)
     fulld = copy(simparams)
     fulld["gap"], fulld["dρ"], fulld["mp"] = gap, dρ, mp
     if opt
@@ -164,11 +164,10 @@ function plottwodimscanlp(d; save=false)
     end
 end
 
-function calctwodimscankitaev(save=false)
+function calctwodimscankitaev(U_k, save=false)
     sites = 2
-    θ = rand(1)
+    θ = 0
     t = 1.0
-    U_k = 0t
     fix_params = Dict(:t=>t, :U_k=>U_k, :θ=>θ)
     scansyms = (:Δ, :ϵ)
     points = 200
@@ -181,7 +180,7 @@ function calctwodimscankitaev(save=false)
     # scanrange = (collect(range(-radius - 1, radius+1, points)), collect(range(-U_k/2 - radius - 1, -U_k/2 + radius + 1, points)))
     simparams = Dict("fix_params"=>fix_params, "sites"=>sites, "ham"=>kitaev, "points"=>points,
                     "scanrange"=>scanrange, "optrange"=>optrange, "init"=>init, "scansyms"=>scansyms, "opt"=>opt)
-    res = twodimscan(simparams, opt=true, maxtime=20)
+    res = twodimscan(simparams, opt=true, maxtime=10)
     if save
         params = @strdict sites U_k
         @tagsave(datadir("scans", savename(params, "jld2")), res)
