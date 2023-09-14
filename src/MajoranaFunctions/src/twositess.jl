@@ -37,7 +37,7 @@ function create_optfunc(particle_ops, params, fixϕ=false)
         if !fixϕ
             params[:Φ] = [0, x[3]]
         end
-        deg, mp, _, _ = measures(particle_ops, localpairingham, params, 2)
+        deg, mp, LD, _ = measures(particle_ops, localpairingham, params, 2)
         return 1e6*(abs(deg) - 1e-8)^2 + 1-mp
     end
     return optfunc

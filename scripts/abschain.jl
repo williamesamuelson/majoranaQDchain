@@ -78,25 +78,28 @@ function plotmeasuresvsVz(;optimize=false, save=false)
     end
 end
 
-function scanchempotentials(params, points, μ1, μ2)
+function scanchempotentials(params, points, μ1, μ2, particle_ops, ham)
     sites = 2
-    d = FermionBasis((1:sites), (:↑, :↓), qn=QuantumDots.parity)
     LD = zeros(points, points)
     mp = zeros(points, points)
     deg = zeros(points, points)
     for i in 1:points
         for j in 1:points
-            params[:μ] = [μ1[i], μ2[j]]
-            deg[i,j], mp[i,j], LD[i,j], _ = measures(d, localpairingham, params, sites)
+            if ham == localpairingham
+                params[:μ] = [μ1[i], μ2[j]]
+            else
+                params[:ϵ] = [μ1[i], μ2[j]]
+            end
+            deg[i,j], mp[i,j], LD[i,j], _ = measures(particle_ops, ham, params, sites)
         end
     end
     return deg, mp, LD
 end
 
-function plotscanchempotentials(params, points, μ1, μ2)
-    deg, mp, LD = scanchempotentials(params, points, μ1, μ2)
+function plotscanchempotentials(params, points, μ1, μ2, particle_ops, ham=localpairingham)
+    deg, mp, LD = scanchempotentials(params, points, μ1, μ2, particle_ops, ham)
     initializeplot() 
-    pdeg = heatmap(μ2, μ1, deg, c=:balance, clims=(-maximum(abs.(deg)), maximum(abs.(deg))),
+    pdeg = heatmap(μ2, μ1, sign.(deg), c=:berlin, clims=(-maximum(abs.(deg)), maximum(abs.(deg))),
                    colorbartitle=L"$\delta E$", xlabel=L"$\mu_2$", ylabel=L"$\mu_1$")
     pmp = heatmap(μ2, μ1, mp, c=:acton,
                    colorbartitle="MP", xlabel=L"$\mu_2$", ylabel=L"$\mu_1$")
@@ -153,27 +156,42 @@ function scan()
     points = 100
     par = false
     Δind = 1.0
-    U = 0
-    U_inter = 0
-    t = 0.2
+    U = 0.1
+    U_inter = 0.6
+    t = 0.5
     tsoq = 0.2
     λ = atan(tsoq)
     Vz = 1.5
     μ0 = findμ0(Δind, Vz, U, par)
     add = 1t + U_inter
     params = Dict{Symbol,Any}(:w=>t, :Δind=>Δind, :λ=>λ, :U=>U, :Vz=>Vz, :U_inter=>U_inter)
-    μ1, μ2, ϕ = optimize_sweetspot(params, par, add, 30)
+    μ1, μ2, ϕ = optimize_sweetspot(params, par, add, 5)
     deg, mp, LD, gap = measures(d, localpairingham, params, 2)
     μ1vec = collect(range(μ1-add, μ1+add, points))
     μ2vec = collect(range(μ2-add, μ2+add, points))
-    pdeg, pmp = plotscanchempotentials(params, points, μ1vec, μ2vec)
+    pdeg, pmp = plotscanchempotentials(params, points, μ1vec, μ2vec, d)
     for p in (pdeg, pmp)
         scatter!(p, [μ2], [μ1], label="Optimized")
         scatter!(p, [μ0[2]], [μ0[1]], label="Guess")
     end
     display(plot(pdeg, pmp, layout=(1,2), dpi=300))
-    println(mp)
+    println("MP = $mp")
+    println("Eg = $gap")
 end
+
+function scankitaev()
+    d = FermionBasis((1:2), qn=QuantumDots.parity)
+    points = 100
+    t = 1.0
+    U = 1
+    Δ = t+1.2*U/2
+    add = 3
+    params = Dict{Symbol,Any}(:t=>t, :Δ=>Δ, :U_k=>U, :θ=>0)
+    μvec = collect(range(-U/2-add, -U/2+add, points))
+    pdeg, pmp = plotscanchempotentials(params, points, μvec, μvec, d, kitaev)
+    display(plot(pdeg, pmp, layout=(1,2), dpi=300))
+end
+
 
 function main()
     d = FermionBasis((1:2), (:↑, :↓), qn=QuantumDots.parity)
@@ -181,7 +199,7 @@ function main()
     Δind = 1.0
     U = 0
     U_inter = 0
-    t = 0.1
+    t = 0.01
     tsoq = 0.2
     λ = atan(tsoq)
     Vz = 4
@@ -192,10 +210,6 @@ function main()
     odd, even = MajoranaFunctions.groundstates(d, localpairingham, params)
     γplus, γminus = MajoranaFunctions.majoranawavefcn(d, odd, even)
     return γplus, γminus
-end
-
-function plotmajoranawavefcn(wavefcn)
-
 end
 
 end
